@@ -15,7 +15,7 @@ class UserCreate(UserBase):
 
 
 class UserInDB(UserBase):
-    id: int
+    _id: int
     role: UserRole
 
     class Config:

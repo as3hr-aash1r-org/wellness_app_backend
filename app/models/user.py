@@ -25,4 +25,5 @@ class User(Base):
     password_hash: Mapped[str] = mapped_column(String, nullable=False)
     role: Mapped[UserRole] = mapped_column(SQLAEnum(UserRole), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow())
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow(), onupdate=datetime.utcnow())
     phone_number: Mapped[str] = mapped_column(String, nullable=False)
