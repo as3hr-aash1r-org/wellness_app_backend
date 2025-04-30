@@ -1,3 +1,4 @@
+from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -13,7 +14,9 @@ class CRUDUser:
             email=obj_in.email,
             password_hash=get_hashed_password(obj_in.password),
             phone_number=obj_in.phone_number,
-            role=obj_in.role
+            role=obj_in.role,
+            sponsor_code=obj_in.sponsor_code,
+            distributor_code=obj_in.distributor_code
         )
         db.add(db_obj)
         db.commit()
@@ -32,6 +35,20 @@ class CRUDUser:
         query = select(User).where(User.email == email)
         result = db.execute(query)
         return result.scalar_one_or_none()
+
+    def get_all_users(self, db: Session):
+        query = select(User)
+        result = db.execute(query)
+        return result.scalars().all()
+
+    def delete_user(self, db: Session, *, user_id: int):
+        query = select(User).where(User.id == user_id)
+        print(query)
+        result = db.execute(query)
+        user = result.scalar_one_or_none()
+        if user is None:
+            raise HTTPException(400, "User not found")
+        return user
 
 
 user_crud = CRUDUser()
