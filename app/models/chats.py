@@ -8,8 +8,6 @@ class ChatRoom(Base):
     __tablename__ = "chat_rooms"
 
     id = Column(Integer, primary_key=True)
-    name = Column(String, nullable=False)
-    created_by = Column(Integer, ForeignKey("users.id"), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     messages = relationship("ChatMessage", back_populates="room", cascade="all, delete")
@@ -22,7 +20,7 @@ class ChatMessage(Base):
     id = Column(Integer, primary_key=True)
     room_id = Column(Integer, ForeignKey("chat_rooms.id"), nullable=False)
     sender_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    content = Column(Text, nullable=False)
+    content = Column(Text, nullable=False)  # audio url, image url
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     room = relationship("ChatRoom", back_populates="messages")

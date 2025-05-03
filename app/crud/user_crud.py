@@ -36,6 +36,12 @@ class CRUDUser:
         result = db.execute(query)
         return result.scalar_one_or_none()
 
+    def get_user_by_id(self, db: Session, *, user_id: int):
+        query = select(User).where(User.id == user_id)
+        result = db.execute(query)
+        # print(result)
+        return result.scalar_one_or_none()
+
     def get_all_users(self, db: Session):
         query = select(User)
         result = db.execute(query)

@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends
 
+from app.core.decorators import standardize_response
 from app.database.session import get_db
 from app.dependencies.auth_dependency import check_user_permissions, get_current_user
 from app.models.user import UserRole, User
@@ -13,10 +14,25 @@ router = APIRouter(prefix="/users")
 
 
 @router.get("/", response_model=APIResponse[list[UserAll]])
+@standardize_response
 def get_users(db: Session = Depends(get_db),
               current_user: User = Depends(check_user_permissions(UserRole.ADMIN))):
     users = user_crud.get_all_users(db=db)
-    return success_response(data=users, message="Users fetched successfully")
+    safe_users = [UserAll.model_validate(user) for user in users]
+    return success_response(data=safe_users, message="Users fetched successfully")
+
+
+@router.get("/{user_id}", response_model=APIResponse[UserAll])
+@standardize_response
+def get_user(user_id: int, db: Session = Depends(get_db),
+             current_user: User = Depends(check_user_permissions(UserRole.ADMIN))):
+    user = user_crud.get_user_by_id(db=db, user_id=user_id)
+    if user is None:
+        return success_response(message="User not found")
+    return success_response(
+        data=user,
+        message="User fetched successfully"
+    )
 
 
 @router.delete("/{user_id}")

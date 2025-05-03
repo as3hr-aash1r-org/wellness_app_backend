@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, String, ForeignKey, Float, DateTime, Text
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, mapped_column
 from sqlalchemy.sql import func
 from app.db import Base
 
@@ -7,20 +7,18 @@ from app.db import Base
 class ProductCategory(Base):
     __tablename__ = "product_categories"
 
-    id = Column(Integer, primary_key=True)
-    name = Column(String, nullable=False, unique=True)
-    image_url = Column(String, nullable=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    id = mapped_column(Integer, primary_key=True)
+    name = mapped_column(String, nullable=False, unique=True)
+    created_at = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     products = relationship("Product", back_populates="category", cascade="all, delete")
 
 
 class Product(Base):
     __tablename__ = "products"
-
-    id = Column(Integer, primary_key=True)
+    # should also be a list of metadata
+    id = mapped_columnn(Integer, primary_key=True)
     name = Column(String, nullable=False)
-    price = Column(Float, nullable=False)
     description = Column(Text, nullable=True)
     image_url = Column(String, nullable=True)
     category_id = Column(Integer, ForeignKey("product_categories.id"), nullable=False)
