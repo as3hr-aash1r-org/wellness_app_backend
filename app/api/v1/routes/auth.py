@@ -21,7 +21,6 @@ def register_user(*, db: Session = Depends(get_db), user_in: UserCreate):
     if user_exists:
         raise HTTPException(status_code=400, detail="Email already exists")
     user = user_crud.create_user(db=db, obj_in=user_in)
-    print(user_dict)
     return success_response(
         data=user,
         message="User created successfully",

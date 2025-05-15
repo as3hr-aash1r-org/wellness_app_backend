@@ -3,12 +3,19 @@ from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.schemas.api_response import create_response
-from app.api.v1.routes import auth, user
+from app.api.v1.routes import auth, user, chat
+from app.database.base import Base
+from app.database.session import engine
 
-app = FastAPI()
+# Create database tables
+Base.metadata.create_all(bind=engine)
+
+app = FastAPI(title="Health & Wellness App API", version="1.0.0")
 
 app.include_router(auth.router, prefix="/api")
 app.include_router(user.router, prefix="/api")
+app.include_router(chat.router, prefix="/api")
+
 
 
 @app.exception_handler(StarletteHTTPException)

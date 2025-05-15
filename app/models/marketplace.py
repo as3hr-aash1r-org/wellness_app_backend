@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, ForeignKey, Float, DateTime, Text
 from sqlalchemy.orm import relationship, mapped_column
 from sqlalchemy.sql import func
-from app.db import Base
+from app.database.base import Base
 
 
 class ProductCategory(Base):
@@ -17,7 +17,7 @@ class ProductCategory(Base):
 class Product(Base):
     __tablename__ = "products"
     # should also be a list of metadata
-    id = mapped_columnn(Integer, primary_key=True)
+    id = mapped_column(Integer, primary_key=True)
     name = Column(String, nullable=False)
     description = Column(Text, nullable=True)
     image_url = Column(String, nullable=True)

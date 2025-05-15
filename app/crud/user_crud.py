@@ -10,7 +10,7 @@ from app.schemas.user_schema import UserCreate
 class CRUDUser:
     def create_user(self, db: Session, *, obj_in: UserCreate):
         db_obj = User(
-            name=obj_in.name,
+            username=obj_in.username,
             email=obj_in.email,
             password_hash=get_hashed_password(obj_in.password),
             phone_number=obj_in.phone_number,
