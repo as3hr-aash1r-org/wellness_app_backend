@@ -24,8 +24,6 @@ def create_chat_room(*, db: Session = Depends(get_db), current_user: User = Depe
     # Check if user already has an active chat room
     existing_room = chat_room_crud.get_user_chat_room(db, user_id=current_user.id)
     if existing_room:
-        print(existing_room.expert, "existing_roommmmm")
-
         return success_response(
             data=existing_room,
             message="User already has an active chat room",
@@ -37,8 +35,6 @@ def create_chat_room(*, db: Session = Depends(get_db), current_user: User = Depe
         user_id=current_user.id,
         name=f"{current_user.username}'s Chat"
     )
-
-    print(room_data, "room_data.expert_id")
     
     # Find and assign the least busy expert
     if current_user.role == UserRole.USER:
@@ -124,10 +120,10 @@ def get_chat_room(
 def get_chat_rooms(
     *,
     db: Session = Depends(get_db),
-    current_user: User = Depends(check_user_permissions(UserRole.ADMIN, UserRole.EXPERT))
+    current_user: User = Depends(check_user_permissions(UserRole.admin, UserRole.expert))
 ):
     """Get all chat rooms (admin) or assigned chat rooms (expert)"""
-    if current_user.role == UserRole.ADMIN:
+    if current_user.role == UserRole.admin:
         chat_rooms = chat_room_crud.get_all_active_chat_rooms(db)
     else:  # Expert
         chat_rooms = chat_room_crud.get_expert_chat_rooms(db, expert_id=current_user.id)

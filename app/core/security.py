@@ -18,11 +18,11 @@ def get_hashed_password(password):
     return pwd_context.hash(password)
 
 
-def create_access_token(email: str, expires_delta: Optional[timedelta] = None):
+def create_access_token(phone_number: str, expires_delta: Optional[timedelta] = None):
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
     else:
         expire = datetime.utcnow() + timedelta(minutes=settings.access_token_expire_minutes)
-    to_encode = {"exp": expire, "sub": email}
+    to_encode = {"exp": expire, "sub": phone_number}
     encoded_jwt = jwt.encode(to_encode, settings.secret_key, algorithm=settings.algorithm)
     return encoded_jwt

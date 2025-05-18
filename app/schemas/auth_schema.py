@@ -16,6 +16,11 @@ class LoginResponse(BaseModel):
     user: UserAll
 
 
+class FirebaseAuthRequest(BaseModel):
+    id_token: str
+    username: str
+    role: UserRole
+
 class ForgetPasswordRequest(BaseModel):
     email: EmailStr
 

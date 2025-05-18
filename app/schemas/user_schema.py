@@ -5,50 +5,46 @@ from datetime import datetime
 
 
 class UserBase(BaseModel):
-    email: EmailStr
     username: str
 
 
 class UserCreate(UserBase):
-    password: str
     phone_number: str
     role: UserRole
     sponsor_code: Optional[str] = None
     distributor_code: Optional[str] = None
+    sponsor_name: Optional[str] = None
 
-    @field_validator("sponsor_code", "distributor_code", mode="before")
-    @classmethod
-    def validate_codes(cls, v: Any, info):
-        data = info.data
-        role = data.get("role")
+    # @field_validator("role")
+    # def normalize_role(cls, v):
+    #     if isinstance(v, str):
+    #         v = v.upper()
+    #     return v
 
-        if not role:
-            return v
+    # @field_validator("role")
+    # @classmethod
+    # def validate_official_fields(cls,v:Any,info):
+    #     data = info.data
+    #     role = data.get("role")
+    #     if role == UserRole.OFFICIAL:
+    #         missing_fields = [f for f in ['sponsor_name', 'distributor_code', 'sponsor_code'] if not data.get(f)]
+    #         if missing_fields:
+    #             raise ValueError(f"Missing required fields for dxn member: {', '.join(missing_fields)}")
+    #     return v
+    
 
-        if role == "sponsor":
-            if info.field_name == "sponsor_code" and not v:
-                raise ValueError("Sponsor code is required")
-            if info.field_name == "distributor_code" and v:
-                raise ValueError("Distributor code is not allowed")
 
-        if role == "distributor":
-            if info.field_name == "distributor_code" and not v:
-                raise ValueError("Distributor code is required")
-            if info.field_name == "sponsor_code" and not v:
-                raise ValueError("Sponsor code is required")
-        else:
-            if info.field_name in ["sponsor_code", "distributor_code"]:
-                raise ValueError(f"{role.capitalize()} should not provide {info.field_name.replace('_', ' ')}.")
-
-        return v
+class UserLogin(BaseModel):
+    phone_number: str
 
 
 class UserRead(UserBase):
     id: int
     phone_number: str
     role: UserRole
-    sponsor_code: Optional[str] = None
-    distributor_code: Optional[str] = None
+    sponsor_name: Optional[str]
+    sponsor_code: Optional[str]
+    distributor_code: Optional[str]
     created_at: datetime
     updated_at: Optional[datetime]
 

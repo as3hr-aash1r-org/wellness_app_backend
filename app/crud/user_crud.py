@@ -11,10 +11,11 @@ class CRUDUser:
     def create_user(self, db: Session, *, obj_in: UserCreate):
         db_obj = User(
             username=obj_in.username,
-            email=obj_in.email,
-            password_hash=get_hashed_password(obj_in.password),
+        # email="ashir@gmail.com",
+            # password_hash=get_hashed_password(obj_in.password),
             phone_number=obj_in.phone_number,
             role=obj_in.role,
+            sponsor_name=obj_in.sponsor_name,
             sponsor_code=obj_in.sponsor_code,
             distributor_code=obj_in.distributor_code
         )
@@ -23,16 +24,21 @@ class CRUDUser:
         db.refresh(db_obj)
         return db_obj
 
-    def authenticate_user(self, db: Session, *, email: str, password: str):
-        user = self.get_by_email(db, email=email)
+    def authenticate_user(self, db: Session, *, phone_number: str):
+        user = self.get_by_phone(db, phone_number=phone_number)
         if not user:
             return None
-        if not verify_password(password, user.password_hash):
-            return None
+        # if not verify_password(password, user.password_hash):
+        #     return None
         return user
 
     def get_by_email(self, db: Session, *, email: str):
         query = select(User).where(User.email == email)
+        result = db.execute(query)
+        return result.scalar_one_or_none()
+
+    def get_by_phone(self, db: Session, *, phone_number: str):
+        query = select(User).where(User.phone_number == phone_number)
         result = db.execute(query)
         return result.scalar_one_or_none()
 
