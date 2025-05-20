@@ -10,13 +10,15 @@ from app.database.session import engine
 # Create database tables
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="Health & Wellness App API", version="1.0.0")
+app = FastAPI(title="Health & Wellness App API",
+ version="1.0.0",
+ docs_url="/api/docs",
+ openapi_url="/api/openapi.json"
+ )
 
 app.include_router(auth.router, prefix="/api")
 app.include_router(user.router, prefix="/api")
 app.include_router(chat.router, prefix="/api")
-
-
 
 @app.exception_handler(StarletteHTTPException)
 async def http_exception_handler(request: Request, exc: StarletteHTTPException):

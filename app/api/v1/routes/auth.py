@@ -9,7 +9,7 @@ from app.models.user import User, UserRole
 from app.schemas.api_response import success_response, APIResponse
 from app.schemas.user_schema import UserAll, UserCreate, UserLogin
 from app.schemas.auth_schema import LoginResponse
-from app.utils.firebase_auth import verify_firebase_token
+# from app.utils.firebase_auth import verify_firebase_token
 
 
 router = APIRouter(prefix="/auth", tags=["Auth"])

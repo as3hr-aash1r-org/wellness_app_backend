@@ -25,7 +25,7 @@ def get_users(db: Session = Depends(get_db),
 @router.get("/{user_id}", response_model=APIResponse[UserAll])
 @standardize_response
 def get_user(user_id: int, db: Session = Depends(get_db),
-             current_user: User = Depends(check_user_permissions(UserRole.admin))):
+             ):
     user = user_crud.get_user_by_id(db=db, user_id=user_id)
     if user is None:
         return success_response(message="User not found")

@@ -17,17 +17,18 @@ def get_current_user(db: Session = Depends(get_db), token: str = Depends(oauth2_
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"}
     )
+ 
     try:
         if token.startswith("Bearer "):
             token = token.replace("Bearer ", "")
         payload = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
-        email: str = payload.get("sub")
-        if email is None:
+        phone_number: str = payload.get("sub") 
+        if phone_number is None:
             raise credentials_exception
     except JWTError:
         raise credentials_exception
 
-    user = user_crud.get_by_email(db=db, email=email)
+    user = user_crud.get_by_phone(db=db, phone_number=phone_number) 
     if user is None:
         raise credentials_exception
     return user
