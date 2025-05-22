@@ -20,6 +20,8 @@ router = APIRouter(prefix="/chat", tags=["Chat"])
 @standardize_response
 def create_chat_room(*, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Create a new chat room for the current user"""
+    if current_user.role != UserRole.user:
+        raise HTTPException(status_code=403, detail="Only users can create chat rooms")
     # Check if user already has an active chat room
     existing_room = chat_room_crud.get_user_chat_room(db, user_id=current_user.id)
     if existing_room:
@@ -34,7 +36,7 @@ def create_chat_room(*, db: Session = Depends(get_db), current_user: User = Depe
         user_id=current_user.id,
         name=f"{current_user.username}'s Chat"
     )
-    
+
     # asign the least busy expert
     if current_user.role == UserRole.user:
         print(f"Finding expert for user {current_user.username} (ID: {current_user.id})")
