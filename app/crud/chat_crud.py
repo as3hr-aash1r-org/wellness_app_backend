@@ -30,11 +30,24 @@ class CRUDChatRoom:
     
     def get_chat_room_with_messages(self, db: Session, *, room_id: int) -> Optional[ChatRoom]:
         """Get a chat room with its messages"""
-        query = select(ChatRoom).where(ChatRoom.id == room_id).options(
-            joinedload(ChatRoom.messages).joinedload(Message.sender)
-        )
+        # First get the chat room
+        query = select(ChatRoom).where(ChatRoom.id == room_id)
         result = db.execute(query)
-        return result.unique().scalars().first()
+        chat_room = result.scalar_one_or_none()
+        
+        if not chat_room:
+            return None
+            
+        # Then get the messages separately with proper ordering
+        messages_query = select(Message).where(Message.room_id == room_id).order_by(
+            desc(Message.created_at)
+        ).options(
+            joinedload(Message.sender)
+        )
+        messages_result = db.execute(messages_query)
+        chat_room.messages = list(messages_result.scalars().all())
+        
+        return chat_room
     
     def get_user_chat_room(self, db: Session, *, user_id: int) -> Optional[ChatRoom]:
         """Get a user's chat room"""
