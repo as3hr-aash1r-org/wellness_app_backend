@@ -8,7 +8,7 @@ from app.core.decorators import standardize_response
 from app.models.user import User, UserRole
 from app.schemas.api_response import success_response, APIResponse
 from app.schemas.user_schema import UserAll, UserCreate, UserLogin
-from app.schemas.auth_schema import LoginResponse
+from app.schemas.auth_schema import LoginResponse, AdminLogin,AdminLoginResponse
 # from app.utils.firebase_auth import verify_firebase_token
 
 
@@ -52,8 +52,24 @@ def login_user(user_in: UserLogin, db: Session = Depends(get_db)):
     user = user_crud.authenticate_user(db, phone_number=user_in.phone_number)
     if not user:
         raise HTTPException(status_code=400, detail="Incorrect phone number")
+    
     token = create_access_token(user.phone_number)
     response_data = LoginResponse(access_token=token, token_type="bearer", user=user)
+    return success_response(
+        data=response_data,
+        status_code=200,
+        message="Login successful"
+    )
+
+@router.post("/admin/login", response_model=APIResponse[AdminLoginResponse])
+@standardize_response
+def admin_login(admin_in: AdminLogin, db: Session = Depends(get_db)):
+    admin = user_crud.authenticate_admin(db, username=admin_in.email, password=admin_in.password)
+    if not admin:
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+    
+    token = create_access_token(admin.email)
+    response_data = AdminLoginResponse(access_token=token, token_type="bearer", user=admin)
     return success_response(
         data=response_data,
         status_code=200,

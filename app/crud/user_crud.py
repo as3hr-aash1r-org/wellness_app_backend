@@ -3,7 +3,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.security import get_hashed_password, verify_password
-from app.models.user import User
+from app.models.user import User,UserRole
+from app.schemas.auth_schema import AdminLogin
 from app.schemas.user_schema import UserCreate
 
 
@@ -30,6 +31,27 @@ class CRUDUser:
             return None
         # if not verify_password(password, user.password_hash):
         #     return None
+        return user
+
+    def create_admin(self,db: Session, obj_in: AdminLogin):
+        db_obj = User(
+            email=obj_in.email,
+            password_hash=get_hashed_password(obj_in.password),
+            role=UserRole.admin
+        )
+        db.add(db_obj)
+        db.commit()
+        db.refresh(db_obj)
+        return db_obj
+    
+    def authenticate_admin(self,db: Session, username: str, password: str):
+        user = self.get_by_email(db, email=username)
+        if not user:
+            return None
+        if not verify_password(password, user.password_hash):
+            return None
+        if user.role != UserRole.admin:
+            return None
         return user
 
     def get_by_email(self, db: Session, *, email: str):

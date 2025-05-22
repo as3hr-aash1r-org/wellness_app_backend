@@ -38,13 +38,24 @@ class UserLogin(BaseModel):
     phone_number: str
 
 
-class UserRead(UserBase):
+class UserRead(BaseModel):
     id: int
     phone_number: str
     role: UserRole
     sponsor_name: Optional[str]
     sponsor_code: Optional[str]
     distributor_code: Optional[str]
+    created_at: datetime
+    updated_at: Optional[datetime]
+
+    class Config:
+        from_attributes = True
+
+
+class AdminRead(BaseModel):
+    id: int
+    email: EmailStr
+    role: UserRole
     created_at: datetime
     updated_at: Optional[datetime]
 

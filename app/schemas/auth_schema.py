@@ -1,6 +1,6 @@
 from pydantic import BaseModel, EmailStr
 from app.models.user import UserRole
-from app.schemas.user_schema import UserAll
+from app.schemas.user_schema import UserAll, AdminRead
 
 
 class TokenSchema(BaseModel):
@@ -15,11 +15,14 @@ class LoginResponse(BaseModel):
     token_type: str
     user: UserAll
 
+class AdminLoginResponse(BaseModel):
+    access_token: str
+    token_type: str
+    user: AdminRead
 
-class FirebaseAuthRequest(BaseModel):
-    id_token: str
-    username: str
-    role: UserRole
+class AdminLogin(BaseModel):
+    email: EmailStr
+    password: str
 
 class ForgetPasswordRequest(BaseModel):
     email: EmailStr
