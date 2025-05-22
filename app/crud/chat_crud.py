@@ -34,7 +34,7 @@ class CRUDChatRoom:
             joinedload(ChatRoom.messages).joinedload(Message.sender)
         )
         result = db.execute(query)
-        return result.scalar_one_or_none()
+        return result.unique().scalars().first()
     
     def get_user_chat_room(self, db: Session, *, user_id: int) -> Optional[ChatRoom]:
         """Get a user's chat room"""
@@ -76,7 +76,7 @@ class CRUDChatRoom:
     
     def get_available_experts(self, db: Session) -> List[User]:
         """Get all available experts"""
-        query = select(User).where(User.role == UserRole.EXPERT)
+        query = select(User).where(User.role == UserRole.expert)
         result = db.execute(query)
         return list(result.scalars().all())
     
@@ -115,7 +115,8 @@ class CRUDMessage:
     def create_message(self, db: Session, *, obj_in: MessageCreate) -> Message:
         """Create a new message"""
         db_obj = Message(
-            chat_room_id=obj_in.chat_room_id,
+            type=obj_in.type,
+            room_id=obj_in.room_id,
             sender_id=obj_in.sender_id,
             content=obj_in.content,
         )
@@ -124,27 +125,27 @@ class CRUDMessage:
         db.refresh(db_obj)
         
         # Update the chat room's updated_at timestamp
-        chat_room = db.execute(select(ChatRoom).where(ChatRoom.id == obj_in.chat_room_id)).scalar_one_or_none()
+        chat_room = db.execute(select(ChatRoom).where(ChatRoom.id == obj_in.room_id)).scalar_one_or_none()
         if chat_room:
             chat_room.updated_at = datetime.utcnow()
             db.commit()
             
         return db_obj
     
-    def get_messages(self, db: Session, *, chat_room_id: int, limit: int = 50, offset: int = 0) -> List[Message]:
+    def get_messages(self, db: Session, *, room_id: int, limit: int = 50, offset: int = 0) -> List[Message]:
         """Get messages for a chat room with pagination"""
-        query = select(Message).where(Message.chat_room_id == chat_room_id).order_by(
+        query = select(Message).where(Message.room_id == room_id).order_by(
             desc(Message.created_at)
         ).offset(offset).limit(limit)
         result = db.execute(query)
         return list(result.scalars().all())
     
-    def mark_messages_as_read(self, db: Session, *, chat_room_id: int, user_id: int) -> int:
+    def mark_messages_as_read(self, db: Session, *, room_id: int, user_id: int) -> int:
         """Mark all messages in a chat room as read for a user"""
         # Get all unread messages not sent by the user
         query = select(Message).where(
             and_(
-                Message.chat_room_id == chat_room_id,
+                Message.room_id == room_id,
                 Message.sender_id != user_id,
                 Message.is_read == False
             )
@@ -162,6 +163,32 @@ class CRUDMessage:
             db.commit()
             
         return count
+    
+    def get_chat_room_users(self, db: Session, *, room_id: int) -> List[User]:
+        """Get all users in a chat room (user and expert)"""
+        chat_room = self.get_chat_room(db, room_id=room_id)
+        if not chat_room:
+            return []
+            
+        users = []
+        
+        # Add the user who created the chat room
+        user = user_crud.get_user_by_id(db, user_id=chat_room.user_id)
+        if user:
+            users.append(user)
+            
+        # Add the expert if assigned
+        if chat_room.expert_id:
+            expert = user_crud.get_user_by_id(db, user_id=chat_room.expert_id)
+            if expert:
+                users.append(expert)
+                
+        return users
+    
+    def get_other_chat_room_users(self, db: Session, *, room_id: int, current_user_id: int) -> List[User]:
+        """Get all users in a chat room except the current user"""
+        all_users = self.get_chat_room_users(db, room_id=room_id)
+        return [user for user in all_users if user.id != current_user_id]
 
 
 chat_room_crud = CRUDChatRoom()

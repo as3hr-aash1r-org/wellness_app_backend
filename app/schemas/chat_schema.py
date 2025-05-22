@@ -11,13 +11,14 @@ class MessageBase(BaseModel):
 
 
 class MessageCreate(MessageBase):
-    chat_room_id: int
+    type: str  # text, audio, image
+    room_id: int
     sender_id: int
-
 
 class MessageRead(MessageBase):
     id: int
-    chat_room_id: int
+    type: str
+    room_id: int
     sender_id: int
     created_at: datetime
     is_read: bool
@@ -57,6 +58,8 @@ class ChatRoomWithMessages(ChatRoomRead):
 # WebSocket message schemas
 class WSMessageType(str):
     TEXT = "text"
+    AUDIO = "audio"
+    IMAGE = "image"
     JOIN = "join"
     LEAVE = "leave"
     ASSIGN_EXPERT = "assign_expert"
@@ -64,13 +67,12 @@ class WSMessageType(str):
 
 
 class WSMessage(BaseModel):
-    type: str  # Message type (text, join, leave, etc.)
+    type: str  # Message type (text, audio, image, join, leave, etc.)
     room_id: Optional[int] = None  # Chat room ID
     sender_id: int  # User ID of the sender
-    content: Optional[str] = None  # Message content
+    content: Optional[str] = None  # Message content or caption for media
     sender_role: UserRole  # Role of the sender
     timestamp: datetime = datetime.utcnow()  # Time when the message was sent
-
 
 class WSResponse(BaseModel):
     type: str

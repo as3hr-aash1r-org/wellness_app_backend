@@ -8,3 +8,4 @@ passlib
 fastapi
 python-jose
 redis
+firebase-admin

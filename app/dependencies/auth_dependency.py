@@ -24,7 +24,7 @@ def get_current_user(db: Session = Depends(get_db), token: str = Depends(oauth2_
         payload = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
         phone_number: str = payload.get("sub") 
         if phone_number is None:
-            raise credentials_exception
+            raise credentials_egxception
     except JWTError:
         raise credentials_exception
 
@@ -35,7 +35,7 @@ def get_current_user(db: Session = Depends(get_db), token: str = Depends(oauth2_
 
 
 def get_admin_user(current_user: User = Depends(get_current_user)):
-    if current_user.role != UserRole.ADMIN:
+    if current_user.role != UserRole.admin:
         raise HTTPException(status_code=403, detail="Not enough permissions")
     return current_user
 

@@ -21,6 +21,7 @@ class User(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     username: Mapped[str] = mapped_column(String, nullable=False)
     sponsor_name: Mapped[str] = mapped_column(String, nullable=True)
+    fcm_token: Mapped[str] = mapped_column(String, nullable=True) # Asher's code
     sponsor_code: Mapped[str] = mapped_column(String, nullable=True)
     distributor_code: Mapped[str] = mapped_column(String, nullable=True)
     # email: Mapped[str] = mapped_column(String, nullable=False, unique=True)

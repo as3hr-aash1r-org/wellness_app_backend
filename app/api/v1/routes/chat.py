@@ -16,7 +16,6 @@ from app.schemas.chat_schema import ChatRoomCreate, ChatRoomRead, MessageRead, C
 router = APIRouter(prefix="/chat", tags=["Chat"])
 
 
-# REST endpoints for chat management
 @router.post("/rooms", response_model=APIResponse[ChatRoomRead])
 @standardize_response
 def create_chat_room(*, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
@@ -30,14 +29,14 @@ def create_chat_room(*, db: Session = Depends(get_db), current_user: User = Depe
             status_code=200
         )
     
-    # Create a new chat room
+    # Create chat room
     room_data = ChatRoomCreate(
         user_id=current_user.id,
         name=f"{current_user.username}'s Chat"
     )
     
-    # Find and assign the least busy expert
-    if current_user.role == UserRole.USER:
+    # asign the least busy expert
+    if current_user.role == UserRole.user:
         print(f"Finding expert for user {current_user.username} (ID: {current_user.id})")
         expert = chat_room_crud.find_least_busy_expert(db)
         if expert:
@@ -60,13 +59,13 @@ def create_chat_room(*, db: Session = Depends(get_db), current_user: User = Depe
 @standardize_response
 def get_my_chat_room(*, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Get the current user's active chat room"""
-    if current_user.role == UserRole.USER:
+    if current_user.role == UserRole.user:
         chat_room = chat_room_crud.get_user_chat_room(db, user_id=current_user.id)
-    elif current_user.role == UserRole.EXPERT:
+    elif current_user.role == UserRole.expert:
         # For experts, return their first assigned chat room (if any)
         expert_rooms = chat_room_crud.get_expert_chat_rooms(db, expert_id=current_user.id)
         chat_room = expert_rooms[0] if expert_rooms else None
-    elif current_user.role == UserRole.ADMIN:
+    elif current_user.role == UserRole.admin:
         # For admins, return the first active chat room (if any)
         admin_rooms = chat_room_crud.get_all_active_chat_rooms(db)
         chat_room = admin_rooms[0] if admin_rooms else None
@@ -103,11 +102,11 @@ def get_chat_room(
         )
     
     # Check if the user has access to this chat room
-    if current_user.role != UserRole.ADMIN and current_user.id != chat_room.user_id and current_user.id != chat_room.expert_id:
+    if current_user.role != UserRole.admin and current_user.id != chat_room.user_id and current_user.id != chat_room.expert_id:
         raise HTTPException(status_code=403, detail="You don't have access to this chat room")
     
     # Mark messages as read
-    message_crud.mark_messages_as_read(db, chat_room_id=room_id, user_id=current_user.id)
+    message_crud.mark_messages_as_read(db, room_id=room_id, user_id=current_user.id)
     
     return success_response(
         data=chat_room,
@@ -151,9 +150,14 @@ async def chat_endpoint(websocket: WebSocket, room_id: int, user_id: int, db: Se
         return
     
     # Validate user access to the chat room
-    if user.role != UserRole.ADMIN and user.id != chat_room.user_id and user.id != chat_room.expert_id:
+    print(f"User {user.id} (role: {user.role}) attempting to access room {room_id}")
+    print(f"Room details - User ID: {chat_room.user_id}, Expert ID: {chat_room.expert_id}")
+    
+    if user.role != UserRole.admin and user.id != chat_room.user_id and user.id != chat_room.expert_id:
+        print(f"Access denied: User {user.id} (role: {user.role}) does not have permission for room {room_id}")
         await websocket.close(code=1008, reason="Access denied to this chat room")
         return
+    print(f"Access granted: User {user.id} (role: {user.role}) has permission for room {room_id}")
     
     # Connect to the room
     await manager.connect(websocket, room_id, user.id, user.role)

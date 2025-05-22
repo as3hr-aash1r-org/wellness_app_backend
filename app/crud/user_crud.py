@@ -10,7 +10,7 @@ from app.schemas.user_schema import UserCreate
 class CRUDUser:
     def create_user(self, db: Session, *, obj_in: UserCreate):
         db_obj = User(
-            username=obj_in.username,
+            username = obj_in.username,
         # email="ashir@gmail.com",
             # password_hash=get_hashed_password(obj_in.password),
             phone_number=obj_in.phone_number,
@@ -60,6 +60,14 @@ class CRUDUser:
         user = result.scalar_one_or_none()
         if user is None:
             raise HTTPException(400, "User not found")
+        return user
+
+    def update_fcm_token(self, db: Session, *, user_id: int, fcm_token: str):
+        user = self.get_user_by_id(db, user_id=user_id)
+        if user is None:
+            raise HTTPException(400, "User not found")
+        user.fcm_token = fcm_token
+        db.commit()
         return user
 
 

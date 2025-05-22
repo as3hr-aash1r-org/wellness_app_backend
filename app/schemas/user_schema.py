@@ -54,3 +54,7 @@ class UserRead(UserBase):
 
 class UserAll(UserRead):
     pass
+
+
+class FCMTokenUpdate(BaseModel):
+    fcm_token: str

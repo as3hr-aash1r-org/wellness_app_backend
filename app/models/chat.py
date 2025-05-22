@@ -29,10 +29,12 @@ class Message(Base):
     __tablename__ = "messages"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    chat_room_id: Mapped[int] = mapped_column(Integer, ForeignKey("chat_rooms.id"), nullable=False)
+    type: Mapped[str] = mapped_column(String, nullable=False)  # text, audio, image
+    room_id: Mapped[int] = mapped_column(Integer, ForeignKey("chat_rooms.id"), nullable=False)
     sender_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
-    content: Mapped[str] = mapped_column(Text, nullable=False)
+    content: Mapped[str] = mapped_column(Text, nullable=False)  # Text content or file path for media
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     is_read: Mapped[bool] = mapped_column(Boolean, default=False)
     
     # Relationships

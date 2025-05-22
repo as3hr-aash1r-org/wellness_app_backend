@@ -8,7 +8,7 @@ from app.crud.user_crud import user_crud
 from sqlalchemy.orm import Session
 
 from app.schemas.api_response import success_response, APIResponse
-from app.schemas.user_schema import UserAll
+from app.schemas.user_schema import UserCreate, UserRead, UserAll, FCMTokenUpdate
 
 router = APIRouter(prefix="/users")
 
@@ -34,7 +34,6 @@ def get_user(user_id: int, db: Session = Depends(get_db),
         message="User fetched successfully"
     )
 
-
 @router.delete("/{user_id}")
 def del_user(user_id: int, db: Session = Depends(get_db),
              current_user: User = Depends(check_user_permissions(UserRole.admin))):
@@ -42,3 +41,12 @@ def del_user(user_id: int, db: Session = Depends(get_db),
     db.delete(user)
     db.commit()
     return success_response(message="User deleted successfully")
+
+@router.put("/fcm-token/{user_id}", response_model=APIResponse[UserRead])
+@standardize_response
+def update_fcm_token(user_id: int, token_data: FCMTokenUpdate, db: Session = Depends(get_db)):
+    user = user_crud.update_fcm_token(db=db, user_id=user_id, fcm_token=token_data.fcm_token)
+    return success_response(
+        data=user,
+        message="FCM token updated successfully"
+    )
