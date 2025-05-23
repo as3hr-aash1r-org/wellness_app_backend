@@ -41,6 +41,7 @@ class UserLogin(BaseModel):
 class UserRead(BaseModel):
     id: int
     phone_number: Optional[str]
+    username: Optional[str]
     role: UserRole
     sponsor_name: Optional[str]
     sponsor_code: Optional[str]

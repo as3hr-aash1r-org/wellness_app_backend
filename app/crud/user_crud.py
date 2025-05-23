@@ -79,7 +79,7 @@ class CRUDUser:
         return result.scalar_one_or_none()
 
     def get_all_users(self, db: Session):
-        query = select(User)
+        query = select(User).order_by(User.id)
         result = db.execute(query)
         return result.scalars().all()
 
