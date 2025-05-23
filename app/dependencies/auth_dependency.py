@@ -8,10 +8,11 @@ from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 from app.models.user import User, UserRole
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/admin/login")
 
 
 def get_current_user(db: Session = Depends(get_db), token: str = Depends(oauth2_scheme)):
+    print("Token received:", token)
     credentials_exception = HTTPException(
         status_code=401,
         detail="Could not validate credentials",
@@ -21,14 +22,28 @@ def get_current_user(db: Session = Depends(get_db), token: str = Depends(oauth2_
     try:
         if token.startswith("Bearer "):
             token = token.replace("Bearer ", "")
+        print("Decoding token with secret:", settings.secret_key[:3] + "...")
+        print("Using algorithm:", settings.algorithm)
         payload = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
-        phone_number: str = payload.get("sub") 
-        if phone_number is None:
-            raise credentials_egxception
-    except JWTError:
+        print("Decoded payload:", payload)
+        id = payload.get("sub") 
+        print("Extracted ID from token:", id)
+        if id is None:
+            print("ID is None, raising exception")
+            raise credentials_exception
+        # try:
+        #     id = int(id)
+        #     print("Converted ID to int:", id)
+        # except (TypeError, ValueError):
+        #     print("Failed to convert ID to int")
+            raise credentials_exception 
+    except JWTError as e:
+        print("JWT Error:", str(e))
         raise credentials_exception
 
-    user = user_crud.get_by_phone(db=db, phone_number=phone_number) 
+    print("Looking up user with ID:", id)
+    user = user_crud.get_user_by_id(db=db, user_id=id)
+    print("User found:", user is not None)
     if user is None:
         raise credentials_exception
     return user

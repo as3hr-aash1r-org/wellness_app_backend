@@ -45,13 +45,21 @@ class CRUDUser:
         return db_obj
     
     def authenticate_admin(self,db: Session, username: str, password: str):
+        print("Authenticating admin with email:", username)
         user = self.get_by_email(db, email=username)
+        print("User found by email:", user is not None)
         if not user:
+            print("No user found with this email")
             return None
+        print("User role:", user.role)
+        print("Verifying password")
         if not verify_password(password, user.password_hash):
+            print("Password verification failed")
             return None
         if user.role != UserRole.admin:
+            print("User is not an admin")
             return None
+        print("Admin authentication successful")
         return user
 
     def get_by_email(self, db: Session, *, email: str):

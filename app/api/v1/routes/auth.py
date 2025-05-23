@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-
+from fastapi.security import OAuth2PasswordRequestForm
 from app.core.security import create_access_token
 from app.crud.user_crud import user_crud
 from app.database.session import get_db
@@ -10,6 +10,8 @@ from app.schemas.api_response import success_response, APIResponse
 from app.schemas.user_schema import UserAll, UserCreate, UserLogin
 from app.schemas.auth_schema import LoginResponse, AdminLogin,AdminLoginResponse
 # from app.utils.firebase_auth import verify_firebase_token
+from app.core.settings import settings
+from datetime import timedelta
 
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
@@ -38,7 +40,7 @@ def register_user(*, db: Session = Depends(get_db), user_in: UserCreate):
             )
             
     user = user_crud.create_user(db=db, obj_in=user_in)
-    token = create_access_token(user.phone_number)
+    token = create_access_token(user.id)
     return success_response(
         data=LoginResponse(access_token=token, token_type="bearer", user=user),
         message="User created successfully",
@@ -53,7 +55,7 @@ def login_user(user_in: UserLogin, db: Session = Depends(get_db)):
     if not user:
         raise HTTPException(status_code=400, detail="Incorrect phone number")
     
-    token = create_access_token(user.phone_number)
+    token = create_access_token(user.id)
     response_data = LoginResponse(access_token=token, token_type="bearer", user=user)
     return success_response(
         data=response_data,
@@ -63,13 +65,18 @@ def login_user(user_in: UserLogin, db: Session = Depends(get_db)):
 
 @router.post("/admin/login", response_model=APIResponse[AdminLoginResponse])
 @standardize_response
-def admin_login(admin_in: AdminLogin, db: Session = Depends(get_db)):
-    admin = user_crud.authenticate_admin(db, username=admin_in.email, password=admin_in.password)
+def admin_login(db: Session = Depends(get_db),form_data: OAuth2PasswordRequestForm = Depends()):
+    print("Admin login attempt with username:", form_data.username)
+    admin = user_crud.authenticate_admin(db, username=form_data.username, password=form_data.password)
     if not admin:
+        print("Admin authentication failed")
         raise HTTPException(status_code=401, detail="Invalid email or password")
     
-    token = create_access_token(admin.email)
-    response_data = AdminLoginResponse(access_token=token, token_type="bearer", user=admin)
+    print("Admin authenticated successfully. ID:", admin.id, "Role:", admin.role)
+    access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
+    access_token = create_access_token(admin.id, expires_delta=access_token_expires)
+    print("Created access token:", access_token)
+    response_data = AdminLoginResponse(access_token=access_token, token_type="bearer", user=admin)
     return success_response(
         data=response_data,
         status_code=200,
