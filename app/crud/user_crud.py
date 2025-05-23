@@ -99,6 +99,20 @@ class CRUDUser:
         user.fcm_token = fcm_token
         db.commit()
         return user
+        
+    def update_user(self, db: Session, *, user_id: int, obj_in):
+        user = self.get_user_by_id(db, user_id=user_id)
+        if user is None:
+            raise HTTPException(status_code=404, detail="User not found")
+            
+        update_data = obj_in.model_dump(exclude_unset=True)
+        for field, value in update_data.items():
+            if hasattr(user, field) and value is not None:
+                setattr(user, field, value)
+                
+        db.commit()
+        db.refresh(user)
+        return user
 
 
 user_crud = CRUDUser()

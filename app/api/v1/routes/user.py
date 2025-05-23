@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends,HTTPException
 
 from app.core.decorators import standardize_response
 from app.database.session import get_db
@@ -8,7 +8,7 @@ from app.crud.user_crud import user_crud
 from sqlalchemy.orm import Session
 
 from app.schemas.api_response import success_response, APIResponse
-from app.schemas.user_schema import UserCreate, UserRead, UserAll, FCMTokenUpdate
+from app.schemas.user_schema import UserCreate, UserRead, UserAll, FCMTokenUpdate, UserUpdate
 
 router = APIRouter(prefix="/users")
 
@@ -49,4 +49,38 @@ def update_fcm_token(user_id: int, token_data: FCMTokenUpdate, db: Session = Dep
     return success_response(
         data=user,
         message="FCM token updated successfully"
+    )
+
+
+@router.post("/", response_model=APIResponse[UserRead])
+@standardize_response
+def create_user(
+    user_data: UserCreate, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(check_user_permissions(UserRole.admin))
+):
+    # Check if user with phone number already exists
+    existing_user = user_crud.get_by_phone(db=db, phone_number=user_data.phone_number)
+    if existing_user:
+        raise HTTPException(status_code=400, detail="User with this phone number already exists")
+    
+    user = user_crud.create_user(db=db, obj_in=user_data)
+    return success_response(
+        data=UserRead.model_validate(user),
+        message="User created successfully"
+    )
+
+
+@router.put("/{user_id}", response_model=APIResponse[UserRead])
+@standardize_response
+def update_user(
+    user_id: int, 
+    user_data: UserUpdate, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(check_user_permissions(UserRole.admin))
+):
+    user = user_crud.update_user(db=db, user_id=user_id, obj_in=user_data)
+    return success_response(
+        data=user,
+        message="User updated successfully"
     )

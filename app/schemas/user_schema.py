@@ -69,3 +69,14 @@ class UserAll(UserRead):
 
 class FCMTokenUpdate(BaseModel):
     fcm_token: str
+
+
+class UserUpdate(BaseModel):
+    username: Optional[str] = None
+    phone_number: Optional[str] = None
+    email: Optional[EmailStr] = None
+    role: Optional[UserRole] = None
+    sponsor_name: Optional[str] = None
+    sponsor_code: Optional[str] = None
+    distributor_code: Optional[str] = None
+    fcm_token: Optional[str] = None
