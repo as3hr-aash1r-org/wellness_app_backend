@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
-
+from fastapi.middleware.cors import CORSMiddleware
 from app.schemas.api_response import create_response
 from app.api.v1.routes import auth, user, chat, test
 from app.database.base import Base
@@ -15,6 +15,15 @@ app = FastAPI(title="Health & Wellness App API",
  docs_url="/api/docs",
  openapi_url="/api/openapi.json"
  )
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # In production, replace with specific origins
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 app.include_router(auth.router, prefix="/api")
 app.include_router(user.router, prefix="/api")
