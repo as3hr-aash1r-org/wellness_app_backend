@@ -86,7 +86,6 @@ class CRUDChatRoom:
             db.commit()
             db.refresh(chat_room)
         return chat_room
-    
     def get_available_experts(self, db: Session) -> List[User]:
         """Get all available experts"""
         query = select(User).where(User.role == UserRole.expert)

@@ -37,10 +37,26 @@ def create_chat_room(*, db: Session = Depends(get_db), current_user: User = Depe
         name=f"{current_user.username}'s Chat"
     )
 
-    # asign the least busy expert
+    # Custom expert assignment based on phone numbers for testing
     if current_user.role == UserRole.user:
-        print(f"Finding expert for user {current_user.username} (ID: {current_user.id})")
-        expert = chat_room_crud.find_least_busy_expert(db)
+        expert = None
+        try:
+            # Specific user–expert mapping for QA
+            if current_user.phone_number == "+923158244152":
+                expert = user_crud.get_by_phone(db, phone_number="+971509931635")
+            else:
+                # All other users go to this default expert
+                expert = user_crud.get_by_phone(db, phone_number="+923342147607")
+        except Exception as e:
+            # If anything goes wrong (e.g., user table empty) fallback to load-balancer
+            print(f"Phone-based expert mapping failed: {e}")
+            expert = None
+
+        # Fallback to least-busy expert selection if mapping didn’t return an expert
+        if expert is None:
+            print(f"Finding expert for user {current_user.username} (ID: {current_user.id}) via load balancer")
+            expert = chat_room_crud.find_least_busy_expert(db)
+
         if expert:
             print(f"Assigned expert {expert.username} (ID: {expert.id}) to chat room")
             room_data.expert_id = expert.id
