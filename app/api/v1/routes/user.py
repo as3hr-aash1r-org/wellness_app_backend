@@ -21,7 +21,7 @@ def get_users(db: Session = Depends(get_db),
     return success_response(data=safe_users, message="Users fetched successfully")
 
 
-@router.get("/{user_id}", response_model=APIResponse[UserAll])
+@router.get("/{user_id}", response_model=APIResponse[UserRead])
 @standardize_response
 def get_user(user_id: int, db: Session = Depends(get_db),
              ):
@@ -29,7 +29,7 @@ def get_user(user_id: int, db: Session = Depends(get_db),
     if user is None:
         return success_response(message="User not found")
     return success_response(
-        data=user,
+        data=UserRead.model_validate(user),
         message="User fetched successfully"
     )
 
