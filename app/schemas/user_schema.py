@@ -48,6 +48,7 @@ class UserRead(BaseModel):
     distributor_code: Optional[str]
     created_at: datetime
     updated_at: Optional[datetime]
+    image_url: Optional[str]
 
     class Config:
         from_attributes = True
