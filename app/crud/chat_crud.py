@@ -57,7 +57,7 @@ class CRUDChatRoom:
                 ChatRoom.is_active == True
             )
         ).options(
-            joinedload(ChatRoom.user)  # Eager load the user relationship
+            joinedload(ChatRoom.user),
         ).order_by(desc(ChatRoom.updated_at))
         result = db.execute(query)
         return result.scalar_one_or_none()

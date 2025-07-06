@@ -23,8 +23,11 @@ def create_chat_room(*, db: Session = Depends(get_db), current_user: User = Depe
         raise HTTPException(status_code=403, detail="Only users can create chat rooms")
     # Check if user already has an active chat room
     existing_room = chat_room_crud.get_user_chat_room(db, user_id=current_user.id)
-
     if existing_room:
+        if current_user.role == UserRole.user:
+            existing_room.user = existing_room.expert
+        elif current_user.role == UserRole.expert:
+            existing_room.user = existing_room.user 
         return success_response(
             data=existing_room,
             message="User already has an active chat room",
