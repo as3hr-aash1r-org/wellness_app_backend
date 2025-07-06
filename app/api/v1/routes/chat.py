@@ -23,6 +23,7 @@ def create_chat_room(*, db: Session = Depends(get_db), current_user: User = Depe
         raise HTTPException(status_code=403, detail="Only users can create chat rooms")
     # Check if user already has an active chat room
     existing_room = chat_room_crud.get_user_chat_room(db, user_id=current_user.id)
+
     if existing_room:
         return success_response(
             data=existing_room,
@@ -107,7 +108,6 @@ def my_chat_rooms(*, db: Session = Depends(get_db), current_user: User = Depends
     """Get all chat rooms assigned to the current expert with user details"""
     chat_rooms = chat_room_crud.get_expert_chat_rooms(db, expert_id=current_user.id)
     
-    # Convert SQLAlchemy models to Pydantic models with user details
     response_rooms = []
     for room in chat_rooms:
         room_dict = {c.name: getattr(room, c.name) for c in room.__table__.columns}
