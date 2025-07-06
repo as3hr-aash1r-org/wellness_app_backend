@@ -7,10 +7,11 @@ from app.database.session import get_db
 from app.core.decorators import standardize_response  
 from app.models.user import User, UserRole
 from app.schemas.api_response import success_response, APIResponse
-from app.schemas.user_schema import UserAll, UserCreate, UserLogin
+from app.schemas.user_schema import UserAll, UserCreate, UserLogin,UserRead
 from app.schemas.auth_schema import LoginResponse, AdminLogin,AdminLoginResponse
 # from app.utils.firebase_auth import verify_firebase_token
 from app.core.settings import settings
+from app.dependencies.auth_dependency import get_current_user
 from datetime import timedelta
 
 
@@ -83,28 +84,8 @@ def admin_login(db: Session = Depends(get_db),form_data: OAuth2PasswordRequestFo
         message="Login successful"
     )
 
+@router.get("/me",response_model=APIResponse[UserRead])
+@standardize_response
+def my_profile(*, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    return success_response(data=UserRead.model_validate(current_user),message="User fetched successfully")
 
-
-# @router.post("/register",response_model=APIResponse[LoginResponse])
-# @standardize_response
-# def firebase_register(payload: FirebaseAuthRequest, db: Session = Depends(get_db)):
-#     try:
-#         user_info = verify_firebase_token(payload.id_token)
-#         phone_number = user_info["phone_number"]
-#     except Exception as e:
-#         raise HTTPException(status_code=401, detail="Invalid Firebase token")
-
-#     db_user = db.query(User).filter_by(phone_number=phone_number).first()
-#     if not db_user:
-#         db_user = User(phone_number=phone_number,username=payload.username)
-#         db.add(db_user)
-#         db.commit()
-#         db.refresh(db_user)
-
-#     access_token = create_access_token(db_user.phone_number)
-
-#     return success_response(
-#         data=LoginResponse(access_token=access_token, token_type="bearer", user=db_user),
-#         status_code=200,
-#         message="Signup successful"
-#     )

@@ -52,6 +52,8 @@ class UserRead(BaseModel):
     class Config:
         from_attributes = True
 
+class UpdateProfilePictureRequest(BaseModel):
+    image_url: str
 
 class AdminRead(BaseModel):
     id: int

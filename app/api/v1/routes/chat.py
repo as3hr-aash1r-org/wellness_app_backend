@@ -1,8 +1,6 @@
 from typing import List, Optional
-
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, HTTPException, Query, Path
 from sqlalchemy.orm import Session
-
 from app.core.decorators import standardize_response
 from app.core.websocket_manager import manager
 from app.crud.chat_crud import chat_room_crud, message_crud
@@ -101,6 +99,15 @@ def get_my_chat_room(*, db: Session = Depends(get_db), current_user: User = Depe
         message="Chat room retrieved successfully"
     )
 
+
+@router.get("/rooms/expert")
+@standardize_response
+def my_chat_rooms(*, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    chat_rooms = chat_room_crud.get_expert_chat_rooms(db, expert_id=current_user.id)
+    return success_response(
+        data=chat_rooms,
+        message="Chat rooms retrieved successfully"
+    )
 
 @router.get("/rooms/{room_id}", response_model=APIResponse[ChatRoomWithMessages])
 @standardize_response

@@ -8,8 +8,7 @@ from app.crud.user_crud import user_crud
 from sqlalchemy.orm import Session
 
 from app.schemas.api_response import success_response, APIResponse
-from app.schemas.user_schema import UserCreate, UserRead, UserAll, FCMTokenUpdate, UserUpdate
-
+from app.schemas.user_schema import UserCreate, UserRead, UserAll, FCMTokenUpdate, UserUpdate,UpdateProfilePictureRequest
 router = APIRouter(prefix="/users")
 
 
@@ -83,4 +82,15 @@ def update_user(
     return success_response(
         data=user,
         message="User updated successfully"
+    )
+
+@router.put("/me/profile-pic", response_model=APIResponse[UserRead])
+@standardize_response
+def update_user_image(request: UpdateProfilePictureRequest, db: Session = Depends(get_db),current_user: User = Depends(get_current_user)):
+    current_user.image_url = request.image_url
+    db.commit()
+    db.refresh(current_user)
+    return success_response(
+        data=current_user,
+        message="Profile picture updated successfully"
     )
