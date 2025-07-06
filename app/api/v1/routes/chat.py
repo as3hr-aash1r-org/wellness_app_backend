@@ -1,5 +1,6 @@
 from typing import List, Optional
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, HTTPException, Query, Path
+from typing import List
 from sqlalchemy.orm import Session
 from app.core.decorators import standardize_response
 from app.core.websocket_manager import manager
@@ -9,7 +10,7 @@ from app.database.session import get_db
 from app.dependencies.auth_dependency import get_current_user, check_user_permissions
 from app.models.user import User, UserRole
 from app.schemas.api_response import success_response, APIResponse
-from app.schemas.chat_schema import ChatRoomCreate, ChatRoomRead, MessageRead, ChatRoomWithMessages
+from app.schemas.chat_schema import ChatRoomCreate, MessageCreate, ChatRoomRead, MessageRead, ChatRoomWithUser, ChatRoomWithMessages
 
 router = APIRouter(prefix="/chat", tags=["Chat"])
 
@@ -100,12 +101,21 @@ def get_my_chat_room(*, db: Session = Depends(get_db), current_user: User = Depe
     )
 
 
-@router.get("/rooms/expert")
+@router.get("/rooms/expert", response_model=List[ChatRoomWithUser])
 @standardize_response
 def my_chat_rooms(*, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """Get all chat rooms assigned to the current expert with user details"""
     chat_rooms = chat_room_crud.get_expert_chat_rooms(db, expert_id=current_user.id)
+    
+    # Convert SQLAlchemy models to Pydantic models with user details
+    response_rooms = []
+    for room in chat_rooms:
+        room_dict = {c.name: getattr(room, c.name) for c in room.__table__.columns}
+        room_dict["user"] = room.user  # This will include the user object
+        response_rooms.append(room_dict)
+    
     return success_response(
-        data=chat_rooms,
+        data=response_rooms,
         message="Chat rooms retrieved successfully"
     )
 

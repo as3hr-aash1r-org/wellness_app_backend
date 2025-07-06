@@ -61,14 +61,17 @@ class CRUDChatRoom:
         return result.scalar_one_or_none()
     
     def get_expert_chat_rooms(self, db: Session, *, expert_id: int) -> List[ChatRoom]:
-        """Get all chat rooms assigned to an expert"""
+        """Get all chat rooms assigned to an expert with user relationship loaded"""
         query = select(ChatRoom).where(
             and_(
                 ChatRoom.expert_id == expert_id,
                 ChatRoom.is_active == True
             )
+        ).options(
+            joinedload(ChatRoom.user)  # Eager load the user relationship
         ).order_by(desc(ChatRoom.updated_at))
-        result = db.execute(query)
+        
+        result = db.execute(query).unique()
         return list(result.scalars().all())
     
     def get_all_active_chat_rooms(self, db: Session) -> List[ChatRoom]:

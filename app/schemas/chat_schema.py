@@ -1,9 +1,10 @@
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional, List, ForwardRef
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from app.models.user import UserRole
+from app.schemas.user_schema import UserRead
 
 
 class MessageBase(BaseModel):
@@ -48,7 +49,16 @@ class ChatRoomRead(ChatRoomBase):
         from_attributes = True
 
 
-class ChatRoomWithMessages(ChatRoomRead):
+class ChatRoomWithUser(ChatRoomRead):
+    """Chat room with user details included"""
+    user: UserRead
+    
+    class Config:
+        from_attributes = True
+
+
+class ChatRoomWithMessages(ChatRoomWithUser):
+    """Chat room with messages and user details included"""
     messages: List[MessageRead] = []
     
     class Config:
