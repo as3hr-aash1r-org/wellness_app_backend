@@ -33,6 +33,8 @@ class User(Base):
                                                  nullable=True)
     phone_number: Mapped[str] = mapped_column(String, nullable=True)
     image_url : Mapped[str] = mapped_column(String, nullable=True)
+    country: Mapped[str] = mapped_column(String, nullable=True)
+    country_code: Mapped[str] = mapped_column(String, nullable=True)
     # sponsor_code: Mapped[str] = mapped_column(String, nullable=True)
     # distributor_code: Mapped[str] = mapped_column(String, nullable=True)
     # is_verified: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)

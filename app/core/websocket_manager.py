@@ -10,6 +10,9 @@ from app.crud.user_crud import user_crud
 from app.models.user import UserRole, User
 from app.schemas.chat_schema import WSMessage, WSResponse, MessageCreate
 from app.services.firebase_service import firebase_notification_service
+from app.schemas.notification_schema import NotificationCreate
+from app.crud.notification_crud import notification_crud
+from app.utils.notification_helper import send_notification
 
 
 class ConnectionManager:
@@ -18,43 +21,37 @@ class ConnectionManager:
         self.active_connections: Dict[int, Set[WebSocket]] = {}
         # Map of WebSocket -> (user_id, room_id)
         self.connection_details: Dict[WebSocket, Dict[str, Any]] = {}
+    
+    def is_user_connected(self, user_id: int, room_id: int) -> bool:
+        for websocket in self.active_connections.get(room_id, set()):
+            details = self.connection_details.get(websocket)
+            if details and details["user_id"] == user_id:
+                return True
+        return False
         
-    def send_notifications_to_other_users(self, db: Session, room_id: int, sender: User, message_type: str, message_content: str):
-        """Send FCM notifications to other users in the chat room"""
+    def send_notifications_to_other_users(
+    self, db: Session, room_id: int, sender: User, message_type: str, message_content: str
+    ):
+        """Send FCM notifications to other users in the chat room (if not connected)"""
         try:
-            # Get other users in the chat room
-            other_users = chat_room_crud.get_other_chat_room_users(db, room_id=room_id, current_user_id=sender.id)
-            
-            # Collect FCM tokens of users who are not currently connected
-            fcm_tokens = []
-            for user in other_users:
-                # Skip users without FCM tokens
-                if not hasattr(user, 'fcm_token') or not user.fcm_token:
-                    continue
-                    
-                # Check if user is currently connected to this chat room
-                is_connected = False
-                if room_id in self.active_connections:
-                    for websocket in self.active_connections[room_id]:
-                        details = self.connection_details.get(websocket)
-                        if details and details["user_id"] == user.id:
-                            is_connected = True
-                            break
-                
-                # Only send notification if user is not connected
-                if not is_connected:
-                    fcm_tokens.append(user.fcm_token)
-            
-            # Skip if no tokens to send to
-            if not fcm_tokens:
+            chat_room = chat_room_crud.get_chat_room(db, room_id=room_id)
+            if not chat_room:
+                print(f"Chat room {room_id} not found")
                 return
-                
-            # Prepare notification content
-            title = f"New message from {sender.username}"
-            
-            # Customize body based on message type
+
+            # Determine the other participant(s)
+            other_users = []
+            if chat_room.user_id != sender.id:
+                user = user_crud.get_user_by_id(db,user_id= chat_room.user_id)
+                if user:
+                    other_users.append(user)
+            if chat_room.expert_id and chat_room.expert_id != sender.id:
+                expert = user_crud.get_user_by_id(db, user_id= chat_room.expert_id)
+                if expert:
+                    other_users.append(expert)
+
+            # Format message body based on message type
             if message_type == "text":
-                # Truncate long messages for the notification
                 body = message_content if len(message_content) <= 50 else f"{message_content[:47]}..."
             elif message_type == "audio":
                 body = "Sent you a voice message"
@@ -62,26 +59,25 @@ class ConnectionManager:
                 body = "Sent you an image"
             else:
                 body = "Sent you a message"
-                
-            # Additional data for the notification
-            data = {
-                "room_id": str(room_id),
-                "sender_id": str(sender.id),
-                "message_type": message_type,
-                "notification_type": "chat_message"
-            }
-            
-            # Send multicast notification
-            firebase_notification_service.send_multicast_notification(
-                tokens=fcm_tokens,
-                title=title,
-                body=body,
-                data=data
-            )
+
+            # Send individual notifications
+            for user in other_users:
+                if user.fcm_token and not self.is_user_connected(user.id, room_id):
+                    try:
+                        send_notification(
+                            db=db,
+                            title=f"New message",
+                            body=body,
+                            type="chat",
+                            target_user=user,
+                            sender=sender
+                        )
+                    except Exception as e:
+                        print(f"Failed to send chat notification to user {user.id}: {e}")
+
         except Exception as e:
             print(f"Error sending notifications: {str(e)}")
-            # Don't raise the exception to avoid disrupting the message flow
-        
+
     async def connect(self, websocket: WebSocket, room_id: int, user_id: int, user_role: UserRole):
         """Connect a user to a chat room"""
         await websocket.accept()
@@ -191,16 +187,6 @@ class ConnectionManager:
         )
         db_message = message_crud.create_message(db, obj_in=msg_create)
 
-        firebase_notification_service.send_multicast_notification(
-        tokens=[user.fcm_token],
-        title=f"Test from {user.username}",
-        body=message.content,
-        data={
-            "notification_type": "test",
-            "room_id": str(message.room_id),
-            "sender_id": str(user.id)
-        }
-        )
         
         # Send notifications to other users in the chat room
         self.send_notifications_to_other_users(db, message.room_id, user, message.type, message.content)

@@ -36,6 +36,7 @@ class CRUDChatRoom:
         chat_room = result.scalar_one_or_none()
         
         if not chat_room:
+            print("Chat room not found")
             return None
             
         # Then get the messages separately with proper ordering
@@ -46,6 +47,7 @@ class CRUDChatRoom:
         )
         messages_result = db.execute(messages_query)
         chat_room.messages = list(messages_result.scalars().all())
+        print(chat_room.messages,"chat room")
         
         return chat_room
     

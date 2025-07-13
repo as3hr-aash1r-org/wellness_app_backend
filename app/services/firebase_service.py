@@ -6,7 +6,6 @@ from fastapi import HTTPException
 
 # Initialize Firebase Admin SDK
 cred_path = os.path.join(os.getcwd(), "wellness_service_account_key.json")
-
 try:
     cred = credentials.Certificate(cred_path)
     firebase_admin.initialize_app(cred)

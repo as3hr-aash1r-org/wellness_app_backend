@@ -6,19 +6,22 @@ from app.core.security import get_hashed_password, verify_password
 from app.models.user import User,UserRole
 from app.schemas.auth_schema import AdminLogin
 from app.schemas.user_schema import UserCreate
+from app.utils.country_helper import get_country_details
 
 
 class CRUDUser:
     def create_user(self, db: Session, *, obj_in: UserCreate):
+        country, country_code = get_country_details(obj_in.phone_number)
+
         db_obj = User(
             username = obj_in.username,
-        # email="ashir@gmail.com",
-            # password_hash=get_hashed_password(obj_in.password),
             phone_number=obj_in.phone_number,
             role=obj_in.role,
             sponsor_name=obj_in.sponsor_name,
             sponsor_code=obj_in.sponsor_code,
-            distributor_code=obj_in.distributor_code
+            distributor_code=obj_in.distributor_code,
+            country=country,
+            country_code=country_code
         )
         db.add(db_obj)
         db.commit()
@@ -114,5 +117,6 @@ class CRUDUser:
         db.refresh(user)
         return user
 
+    
 
 user_crud = CRUDUser()

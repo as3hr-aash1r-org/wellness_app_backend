@@ -14,6 +14,8 @@ class UserCreate(UserBase):
     sponsor_code: Optional[str] = None
     distributor_code: Optional[str] = None
     sponsor_name: Optional[str] = None
+    country: Optional[str] = None
+    country_code: Optional[str] = None
 
     # @field_validator("role")
     # def normalize_role(cls, v):
@@ -46,6 +48,8 @@ class UserRead(BaseModel):
     sponsor_name: Optional[str]
     sponsor_code: Optional[str]
     distributor_code: Optional[str]
+    country: Optional[str]
+    country_code: Optional[str]
     created_at: datetime
     updated_at: Optional[datetime]
     image_url: Optional[str]

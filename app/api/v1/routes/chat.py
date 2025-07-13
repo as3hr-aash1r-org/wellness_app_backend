@@ -140,7 +140,7 @@ def get_chat_room(
     
     # Mark messages as read
     message_crud.mark_messages_as_read(db, room_id=room_id, user_id=current_user.id)
-    
+    print(chat_room.messages,"chat room in after")
     return success_response(
         data=chat_room,
         message="Chat room retrieved successfully"

@@ -9,11 +9,20 @@ class NotificationBase(BaseModel):
     target_user_id: int
 
 class NotificationCreate(NotificationBase):
-    pass
+    sender_id: Optional[int] = None
+
+class SenderOut(BaseModel):
+    id: int
+    username: str
+    image_url: Optional[str] = None
+
+    class Config:
+        from_attributes = True
 
 class NotificationOut(NotificationBase):
     id: int
     created_at: datetime
+    sender: Optional[SenderOut] = None
 
     class Config:
         from_attributes = True
