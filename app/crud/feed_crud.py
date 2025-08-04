@@ -11,9 +11,11 @@ class FeedCRUD:
         db.refresh(feed)
         return feed
 
-    def get_all(self, db: Session, category_id: Optional[int] = None, limit: int = 50, offset: int = 0):
+    def get_all(self, db: Session, type: Optional[str] = None, category_id: Optional[int] = None, limit: int = 50, offset: int = 0):
         query = db.query(FeedItem).options(joinedload(FeedItem.category))
         
+        if type:
+            query = query.filter(FeedItem.type == type)
         if category_id:
             query = query.filter(FeedItem.category_id == category_id)
             
@@ -29,7 +31,7 @@ class FeedCRUD:
             FeedItem.category_id == category_id
         ).order_by(FeedItem.created_at.desc()).offset(offset).limit(limit).all()
 
-    def search(self, db: Session, query: str, category_id: Optional[int] = None, limit: int = 20):
+    def search(self, db: Session, query: str, category_id: Optional[int] = None, limit: int = 20, offset: int = 0):
         search_query = db.query(FeedItem).options(joinedload(FeedItem.category))
         
         # Search in title, description, content, and tags
@@ -45,12 +47,35 @@ class FeedCRUD:
         if category_id:
             search_query = search_query.filter(FeedItem.category_id == category_id)
             
-        return search_query.order_by(FeedItem.created_at.desc()).limit(limit).all()
+        return search_query.order_by(FeedItem.created_at.desc()).offset(offset).limit(limit).all()
 
     def get(self, db: Session, feed_id: int):
         return db.query(FeedItem).options(joinedload(FeedItem.category)).filter(
             FeedItem.id == feed_id
         ).first()
+
+    def count_all(self, db: Session, category_id: Optional[int] = None):
+        query = db.query(FeedItem)
+        if category_id:
+            query = query.filter(FeedItem.category_id == category_id)
+        return query.count()
+
+    def search_count(self, db: Session, query: str, category_id: Optional[int] = None):
+        q = db.query(FeedItem)
+
+        search_filter = (
+            FeedItem.title.ilike(f"%{query}%") |
+            FeedItem.description.ilike(f"%{query}%") |
+            FeedItem.content.ilike(f"%{query}%") |
+            FeedItem.tags.ilike(f"%{query}%")
+        )
+        q = q.filter(search_filter)
+
+        if category_id:
+            q = q.filter(FeedItem.category_id == category_id)
+
+        return q.count()
+
 
     def update(self, db: Session, feed_id: int, obj_in: FeedCreate):
         feed = self.get(db, feed_id)

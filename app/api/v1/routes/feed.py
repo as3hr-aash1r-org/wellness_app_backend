@@ -5,6 +5,8 @@ from app.database.session import get_db
 from app.schemas.feed_schema import FeedCreate, FeedOut, FeedCategoryCreate, FeedCategoryOut
 from app.schemas.api_response import success_response, APIResponse
 from app.crud.feed_crud import feed_crud, feed_category_crud
+import math
+
 
 router = APIRouter(prefix="/feeds", tags=["Feeds"])
 
@@ -60,12 +62,21 @@ def create_feed(feed: FeedCreate, db: Session = Depends(get_db)):
 @router.get("/", response_model=APIResponse[list[FeedOut]])
 def get_all_feeds(
     db: Session = Depends(get_db),
+    type: Optional[str] = Query(None, description="Filter by type"),
     category_id: Optional[int] = Query(None, description="Filter by category ID"),
+    search: Optional[str] = None,
     limit: int = Query(50, ge=1, le=100, description="Number of items to return"),
-    offset: int = Query(0, ge=0, description="Number of items to skip")
+    current_page: int = Query(1, ge=1, description="Current page number"),
 ):
-    items = feed_crud.get_all(db, category_id=category_id, limit=limit, offset=offset)
-    return success_response(items, "Feed items fetched successfully")
+    offset = (current_page - 1) * limit
+
+    if search:
+        items = feed_crud.search(db, query=search, category_id=category_id, limit=limit, offset=offset)
+    else:
+        items = feed_crud.get_all(db, type=type, category_id=category_id, limit=limit, offset=offset)
+
+    total_pages = math.ceil(feed_crud.count_all(db, category_id=category_id) / limit)
+    return success_response(items, "Feed items fetched successfully", total_pages=total_pages)
 
 @router.get("/featured", response_model=APIResponse[list[FeedOut]])
 def get_featured_feeds(
@@ -74,31 +85,6 @@ def get_featured_feeds(
 ):
     items = feed_crud.get_featured(db, limit=limit)
     return success_response(items, "Featured feed items fetched successfully")
-
-@router.get("/category/{category_id}", response_model=APIResponse[list[FeedOut]])
-def get_feeds_by_category(
-    category_id: int,
-    db: Session = Depends(get_db),
-    limit: int = Query(50, ge=1, le=100, description="Number of items to return"),
-    offset: int = Query(0, ge=0, description="Number of items to skip")
-):
-    # Validate category exists
-    category = feed_category_crud.get(db, category_id)
-    if not category:
-        raise HTTPException(status_code=404, detail="Category not found")
-    
-    items = feed_crud.get_by_category(db, category_id, limit=limit, offset=offset)
-    return success_response(items, f"Feed items for category '{category.name}' fetched successfully")
-
-@router.get("/search", response_model=APIResponse[list[FeedOut]])
-def search_feeds(
-    q: str = Query(..., description="Search query"),
-    db: Session = Depends(get_db),
-    category_id: Optional[int] = Query(None, description="Filter by category ID"),
-    limit: int = Query(20, ge=1, le=50, description="Number of items to return")
-):
-    items = feed_crud.search(db, query=q, category_id=category_id, limit=limit)
-    return success_response(items, f"Search results for '{q}' fetched successfully")
 
 @router.get("/{feed_id}", response_model=APIResponse[FeedOut])
 def get_feed(feed_id: int, db: Session = Depends(get_db)):
@@ -109,7 +95,6 @@ def get_feed(feed_id: int, db: Session = Depends(get_db)):
 
 @router.put("/{feed_id}", response_model=APIResponse[FeedOut])
 def update_feed(feed_id: int, feed: FeedCreate, db: Session = Depends(get_db)):
-    # Validate category if provided
     if feed.category_id:
         category = feed_category_crud.get(db, feed.category_id)
         if not category:
