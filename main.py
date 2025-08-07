@@ -3,7 +3,7 @@ from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from app.schemas.api_response import create_response
-from app.api.v1.routes import auth, user, chat, product,test, category, feed, notification
+from app.api.v1.routes import auth, user, chat, product,test, category, feed, notification, expert
 from app.database.base import Base
 from app.database.session import engine
 
@@ -33,6 +33,7 @@ app.include_router(product.router,prefix="/api")
 app.include_router(category.router, prefix='/api')
 app.include_router(feed.router, prefix='/api')
 app.include_router(notification.router, prefix='/api')
+app.include_router(expert.router, prefix='/api')
 
 @app.exception_handler(StarletteHTTPException)
 async def http_exception_handler(request: Request, exc: StarletteHTTPException):

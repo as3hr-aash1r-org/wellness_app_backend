@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from app.core.security import get_hashed_password, verify_password
 from app.models.user import User,UserRole
 from app.schemas.auth_schema import AdminLogin
-from app.schemas.user_schema import UserCreate
+from app.schemas.user_schema import UserCreate, ExpertCreate, ExpertUpdate
 from app.utils.country_helper import get_country_details
 
 
@@ -117,6 +117,97 @@ class CRUDUser:
         db.refresh(user)
         return user
 
-    
+    # Expert-specific CRUD operations
+    def create_expert(self, db: Session, *, obj_in: ExpertCreate):
+        # Check if phone number already exists
+        existing_user = self.get_by_phone(db, phone_number=obj_in.phone_number)
+        if existing_user:
+            raise HTTPException(status_code=400, detail="Phone number already exists")
+            
+        # Check if email already exists (if provided)
+        if obj_in.email:
+            existing_email = self.get_by_email(db, email=obj_in.email)
+            if existing_email:
+                raise HTTPException(status_code=400, detail="Email already exists")
+        
+        # Get country details from phone number
+        country, country_code = get_country_details(obj_in.phone_number)
+        if not obj_in.country:  # Use detected country if not provided
+            country = obj_in.country or country
+
+        # Create the expert user
+        db_obj = User(
+            first_name=obj_in.first_name,
+            middle_name=obj_in.middle_name,
+            last_name=obj_in.last_name,
+            username=f"{obj_in.first_name} {obj_in.last_name}",  # Generate username
+            phone_number=obj_in.phone_number,
+            email=obj_in.email,
+            password_hash=get_hashed_password(obj_in.password),
+            date_of_birth=obj_in.date_of_birth,
+            gender=obj_in.gender,
+            position=obj_in.position,
+            country=obj_in.country or country,
+            country_code=country_code,
+            dxn_distributor_number=obj_in.dxn_distributor_number,
+            role=UserRole.expert
+        )
+        
+        db.add(db_obj)
+        db.commit()
+        db.refresh(db_obj)
+        return db_obj
+
+    def get_all_experts(self, db: Session):
+        query = select(User).where(User.role == UserRole.expert).order_by(User.id)
+        result = db.execute(query)
+        return result.scalars().all()
+
+    def get_expert_by_id(self, db: Session, *, expert_id: int):
+        query = select(User).where(User.id == expert_id, User.role == UserRole.expert)
+        result = db.execute(query)
+        return result.scalar_one_or_none()
+
+    def update_expert(self, db: Session, *, expert_id: int, obj_in: ExpertUpdate):
+        expert = self.get_expert_by_id(db, expert_id=expert_id)
+        if expert is None:
+            raise HTTPException(status_code=404, detail="Expert not found")
+            
+        update_data = obj_in.model_dump(exclude_unset=True)
+        
+        # Check if phone number is being updated and if it already exists
+        if "phone_number" in update_data and update_data["phone_number"]:
+            existing_phone = self.get_by_phone(db, phone_number=update_data["phone_number"])
+            if existing_phone and existing_phone.id != expert_id:
+                raise HTTPException(status_code=400, detail="Phone number already exists")
+        
+        # Check if email is being updated and if it already exists
+        if "email" in update_data and update_data["email"]:
+            existing_email = self.get_by_email(db, email=update_data["email"])
+            if existing_email and existing_email.id != expert_id:
+                raise HTTPException(status_code=400, detail="Email already exists")
+        
+        # Update username if first_name or last_name changed
+        if "first_name" in update_data or "last_name" in update_data:
+            first_name = update_data.get("first_name", expert.first_name)
+            last_name = update_data.get("last_name", expert.last_name)
+            update_data["username"] = f"{first_name} {last_name}"
+        
+        for field, value in update_data.items():
+            if hasattr(expert, field) and value is not None:
+                setattr(expert, field, value)
+                
+        db.commit()
+        db.refresh(expert)
+        return expert
+
+    def delete_expert(self, db: Session, *, expert_id: int):
+        expert = self.get_expert_by_id(db, expert_id=expert_id)
+        if expert is None:
+            raise HTTPException(status_code=404, detail="Expert not found")
+        
+        db.delete(expert)
+        db.commit()
+        return expert
 
 user_crud = CRUDUser()

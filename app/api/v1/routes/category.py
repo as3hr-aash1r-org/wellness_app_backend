@@ -1,12 +1,13 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.database.session import get_db
-from app.schemas.product_schema import ProductCreate, ProductOut
 from app.schemas.api_response import success_response, APIResponse
 from app.crud.product_crud import product_crud
-from fastapi import HTTPException
-from app.models.product import ProductCategory
-from pydantic import BaseModel
+from app.models.product import ProductCategory, Product
+from pydantic import BaseModel, field_validator
+from app.dependencies.auth_dependency import check_user_permissions
+from app.models.user import UserRole, User
+from app.core.decorators import standardize_response
 
 router = APIRouter(prefix="/categories",tags=["Categories"])
 

@@ -1,7 +1,7 @@
-from typing import Optional, Any, ClassVar
+from typing import Optional, Any, ClassVar, Literal
 from pydantic import BaseModel, EmailStr, field_validator
 from app.models.user import UserRole
-from datetime import datetime
+from datetime import datetime, date
 
 
 class UserBase(BaseModel):
@@ -88,3 +88,60 @@ class UserUpdate(BaseModel):
     sponsor_code: Optional[str] = None
     distributor_code: Optional[str] = None
     fcm_token: Optional[str] = None
+
+
+# Expert-specific schemas
+class ExpertCreate(BaseModel):
+    first_name: str
+    middle_name: Optional[str] = None
+    last_name: str
+    phone_number: str
+    email: Optional[EmailStr] = None
+    date_of_birth: Optional[date] = None
+    password: str
+    gender: Optional[Literal["male", "female", "other"]] = None
+    position: Optional[str] = None
+    country: Optional[str] = None
+    dxn_distributor_number: Optional[str] = None
+
+    @field_validator('phone_number')
+    @classmethod
+    def validate_phone_number(cls, v: str) -> str:
+        # Basic phone number validation - you can make this more strict
+        if not v or len(v.strip()) < 10:
+            raise ValueError('Phone number must be at least 10 characters')
+        return v.strip()
+
+
+class ExpertRead(BaseModel):
+    id: int
+    first_name: Optional[str]
+    middle_name: Optional[str]
+    last_name: Optional[str]
+    phone_number: Optional[str]
+    email: Optional[str]
+    date_of_birth: Optional[date]
+    gender: Optional[str]
+    position: Optional[str]
+    country: Optional[str]
+    dxn_distributor_number: Optional[str]
+    role: UserRole
+    created_at: datetime
+    updated_at: Optional[datetime]
+    image_url: Optional[str]
+
+    class Config:
+        from_attributes = True
+
+
+class ExpertUpdate(BaseModel):
+    first_name: Optional[str] = None
+    middle_name: Optional[str] = None
+    last_name: Optional[str] = None
+    phone_number: Optional[str] = None
+    email: Optional[EmailStr] = None
+    date_of_birth: Optional[date] = None
+    gender: Optional[Literal["male", "female", "other"]] = None
+    position: Optional[str] = None
+    country: Optional[str] = None
+    dxn_distributor_number: Optional[str] = None
