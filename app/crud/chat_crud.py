@@ -138,6 +138,7 @@ class CRUDMessage:
             room_id=obj_in.room_id,
             sender_id=obj_in.sender_id,
             content=obj_in.content,
+            image=obj_in.image,
         )
         db.add(db_obj)
         db.commit()

@@ -184,6 +184,7 @@ class ConnectionManager:
             room_id=message.room_id,
             sender_id=message.sender_id,
             content=message.content,
+            image=message.image,
         )
         db_message = message_crud.create_message(db, obj_in=msg_create)
 
@@ -199,6 +200,7 @@ class ConnectionManager:
             sender_name=user.username,
             sender_role=user.role,
             content=message.content,
+            image=message.image,
             timestamp=db_message.created_at,
             message_id=db_message.id,
         )

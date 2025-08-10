@@ -9,6 +9,7 @@ from app.schemas.user_schema import UserRead
 
 class MessageBase(BaseModel):
     content: str
+    image: str
 
 
 class MessageCreate(MessageBase):
@@ -82,6 +83,7 @@ class WSMessage(BaseModel):
     sender_id: int  # User ID of the sender
     content: Optional[str] = None  # Message content or caption for media
     sender_role: UserRole  # Role of the sender
+    image: Optional[str] = None
     timestamp: datetime = datetime.utcnow()  # Time when the message was sent
 
 class WSResponse(BaseModel):
