@@ -36,7 +36,7 @@ class Message(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     is_read: Mapped[bool] = mapped_column(Boolean, default=False)
-    
+    image: Mapped[str] = mapped_column(Text, nullable=True)
     # Relationships
     chat_room = relationship("ChatRoom", back_populates="messages")
     sender = relationship("User")
