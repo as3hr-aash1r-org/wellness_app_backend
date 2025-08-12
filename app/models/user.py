@@ -35,6 +35,8 @@ class User(Base):
     image_url : Mapped[str] = mapped_column(String, nullable=True)
     country: Mapped[str] = mapped_column(String, nullable=True)
     country_code: Mapped[str] = mapped_column(String, nullable=True)
+    is_deleted: Mapped[bool] = mapped_column(Boolean, default=False, nullable=True)
+    deleted_at: Mapped[datetime] = mapped_column(DateTime, nullable=True)
     
     # Expert-specific fields
     first_name: Mapped[str] = mapped_column(String, nullable=True)

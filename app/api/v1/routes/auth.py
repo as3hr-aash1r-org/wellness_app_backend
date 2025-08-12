@@ -52,7 +52,7 @@ def register_user(*, db: Session = Depends(get_db), user_in: UserCreate):
 @router.post("/login", response_model=APIResponse[LoginResponse])
 @standardize_response
 def login_user(user_in: UserLogin, db: Session = Depends(get_db)):
-    user = user_crud.authenticate_user(db, phone_number=user_in.phone_number)
+    user = user_crud.get_by_phone(db, phone_number=user_in.phone_number,is_deleted=False)
     if not user:
         raise HTTPException(status_code=400, detail="Incorrect phone number")
     

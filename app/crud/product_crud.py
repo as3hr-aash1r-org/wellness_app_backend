@@ -1,9 +1,10 @@
 from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import select, or_
+from sqlalchemy import select, or_, func
 from app.models.product import Product, ProductCategory
 from app.schemas.product_schema import ProductCreate, ProductUpdate, ProductCategoryCreate
 from fastapi import HTTPException
 from typing import Optional, List
+
 
 class ProductCRUD:
     # Category methods
@@ -80,8 +81,78 @@ class ProductCRUD:
     def get_all(self, db: Session, skip: int = 0, limit: int = 100) -> List[Product]:
         return db.query(Product).options(joinedload(Product.category)).offset(skip).limit(limit).all()
     
-    def get_by_category(self, db: Session, category_id: int) -> List[Product]:
-        return db.query(Product).options(joinedload(Product.category)).filter(Product.category_id == category_id).all()
+    # def get_by_category(self, db: Session, category_name: str) -> List[Product]:
+    #     categories = [
+    #         "Health and Dietary Suppliments",
+    #         "Personal Care and Cosmetics",
+    #         "Food and Beverages",
+    #         "Others"
+    #     ]
+    
+    #     if category_name not in categories:
+    #         raise HTTPException(status_code=404, detail="Category not found")
+
+    #     return (
+    #         db.query(Product)
+    #         .join(ProductCategory)
+    #         .filter(ProductCategory.name == category_name)
+    #         .options(joinedload(Product.category))
+    #         .all()
+    #     )
+    def count_all(self, db: Session, category_name: Optional[str] = None, status: Optional[str] = None) -> int:
+        query = db.query(Product).join(ProductCategory)
+
+        categories = [
+            "Health and Dietary Suppliments",
+            "Personal Care and Cosmetics",
+            "Food and Beverages",
+            "Others"
+        ]
+        categories_lower = [c.lower() for c in categories]
+
+        if category_name:
+            category_name_normalized = category_name.strip().lower()
+
+            if category_name_normalized not in categories_lower:
+                raise HTTPException(status_code=404, detail="Category not found")
+
+            if category_name_normalized == "others":
+                query = query.filter(~func.lower(ProductCategory.name).in_(categories_lower))
+            else:
+                query = query.filter(func.lower(ProductCategory.name) == category_name_normalized)
+
+        if status:
+            query = query.filter(Product.status == status)
+
+        return query.count()
+
+    def get_by_category(
+        self,
+        db: Session,
+        category_name: str,
+        offset: int = 0,
+        limit: int = 100
+    ) -> List[Product]:
+        categories = [
+            "Health and Dietary Suppliments",
+            "Personal Care and Cosmetics",
+            "Food and Beverages",
+            "Others"
+        ]
+        category_name_normalized = category_name.strip().lower()
+        categories_lower = [c.lower() for c in categories]
+
+        if category_name_normalized not in categories_lower:
+            raise HTTPException(status_code=404, detail="Category not found")
+
+        query = db.query(Product).join(ProductCategory).options(joinedload(Product.category))
+
+        if category_name_normalized == "others":
+            query = query.filter(~func.lower(ProductCategory.name).in_(categories_lower))
+        else:
+            query = query.filter(func.lower(ProductCategory.name) == category_name_normalized)
+
+        return query.offset(offset).limit(limit).all()
     
     def get_by_id(self, db: Session, product_id: int) -> Optional[Product]:
         return db.query(Product).options(joinedload(Product.category)).filter(Product.id == product_id).first()
@@ -89,8 +160,19 @@ class ProductCRUD:
     def get_by_sku(self, db: Session, sku: str) -> Optional[Product]:
         return db.query(Product).options(joinedload(Product.category)).filter(Product.sku == sku).first()
     
-    def search_products(self, db: Session, query: str, category_id: Optional[int] = None, 
-                       skip: int = 0, limit: int = 100) -> List[Product]:
+    def search_count(self, db: Session, query: str) -> int:
+        """Count products matching the search query"""
+        search_filter = or_(
+            Product.name.ilike(f"%{query}%"),
+            Product.sku.ilike(f"%{query}%"),
+            Product.company.ilike(f"%{query}%"),
+            Product.tags.ilike(f"%{query}%"),
+            Product.description.ilike(f"%{query}%")
+        )
+        return db.query(Product).filter(search_filter).count()
+
+    
+    def search_products(self, db: Session, query: str, skip: int = 0, limit: int = 100) -> List[Product]:
         """Search products by name, SKU, company, or tags"""
         search_filter = or_(
             Product.name.ilike(f"%{query}%"),
@@ -101,9 +183,6 @@ class ProductCRUD:
         )
         
         query_builder = db.query(Product).options(joinedload(Product.category)).filter(search_filter)
-        
-        if category_id:
-            query_builder = query_builder.filter(Product.category_id == category_id)
         
         return query_builder.offset(skip).limit(limit).all()
     

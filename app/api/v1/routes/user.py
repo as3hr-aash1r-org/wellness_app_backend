@@ -6,7 +6,7 @@ from app.dependencies.auth_dependency import check_user_permissions, get_current
 from app.models.user import UserRole, User
 from app.crud.user_crud import user_crud
 from sqlalchemy.orm import Session
-
+from datetime import datetime
 from app.schemas.api_response import success_response, APIResponse
 from app.schemas.user_schema import UserCreate, UserRead, UserAll, FCMTokenUpdate, UserUpdate,UpdateProfilePictureRequest
 router = APIRouter(prefix="/users")
@@ -35,10 +35,14 @@ def get_user(user_id: int, db: Session = Depends(get_db),
 
 @router.delete("/{user_id}")
 def del_user(user_id: int, db: Session = Depends(get_db),
-             current_user: User = Depends(check_user_permissions(UserRole.admin))):
-    user = user_crud.delete_user(db=db, user_id=user_id)
-    db.delete(user)
+             admin_check: User = Depends(check_user_permissions(UserRole.admin,UserRole.user))):
+    user = user_crud.get_user_by_id(db=db, user_id=user_id)
+    if user is None:
+        return success_response(message="User not found")
+    user.is_deleted = True
+    user.deleted_at = datetime.utcnow()
     db.commit()
+    db.refresh(user)
     return success_response(message="User deleted successfully")
 
 @router.put("/fcm-token/{user_id}", response_model=APIResponse[UserRead])

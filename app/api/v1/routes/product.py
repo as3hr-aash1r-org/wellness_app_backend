@@ -8,7 +8,7 @@ from app.crud.product_crud import product_crud
 from app.dependencies.auth_dependency import check_user_permissions, get_current_user
 from app.models.user import UserRole, User
 from app.core.decorators import standardize_response
-
+import math
 
 router = APIRouter(prefix="/products", tags=["Products"])
 
@@ -41,24 +41,26 @@ def create_product(
 @router.get("/", response_model=APIResponse[List[ProductOut]])
 @standardize_response
 def get_all_products(
-    skip: int = Query(0, ge=0),
+    current_page: int = Query(1, ge=1, description="Current page number"),
     limit: int = Query(100, ge=1, le=100),
-    category_id: Optional[int] = Query(None),
-    status: Optional[str] = Query(None),
-    best_sellers: bool = Query(False),
+    category_name: Optional[str] = Query(None),
+    search: Optional[str] = Query(None),
     db: Session = Depends(get_db)
 ):
     """Get products with filtering options"""
     try:
-        if best_sellers:
-            products = product_crud.get_best_sellers(db=db, limit=limit)
-        elif category_id:
-            products = product_crud.get_by_category(db=db, category_id=category_id)
-        elif status:
-            products = product_crud.get_by_status(db=db, status=status)
+        offset = (current_page - 1) * limit
+        if search:
+            products = product_crud.search_products(db=db, query=search,skip=offset, limit=limit)
+            total_items = product_crud.search_count(db=db, query=search)
+        elif category_name:
+            products = product_crud.get_by_category(db=db, category_name=category_name, offset=offset, limit=limit)
+            total_items = product_crud.count_all(db=db, category_name=category_name)
         else:
-            products = product_crud.get_all(db=db, skip=skip, limit=limit)
+            products = product_crud.get_all(db=db, offset=offset, limit=limit)
+            total_items = product_crud.count_all(db=db)
         
+        total_pages = math.ceil(total_items / limit) if limit else 1
         # Add category names
         product_outs = []
         for product in products:
@@ -69,38 +71,39 @@ def get_all_products(
         
         return success_response(
             data=product_outs,
-            message="Products fetched successfully"
+            message="Products fetched successfully",
+            total_pages=total_pages
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching products: {str(e)}")
 
 
-@router.get("/search", response_model=APIResponse[List[ProductOut]])
-@standardize_response
-def search_products(
-    q: str = Query(..., min_length=1, description="Search query"),
-    category_id: Optional[int] = Query(None),
-    skip: int = Query(0, ge=0),
-    limit: int = Query(50, ge=1, le=100),
-    db: Session = Depends(get_db)
-):
-    """Search products by name, SKU, company, tags, or description"""
-    products = product_crud.search_products(
-        db=db, query=q, category_id=category_id, skip=skip, limit=limit
-    )
+# @router.get("/search", response_model=APIResponse[List[ProductOut]])
+# @standardize_response
+# def search_products(
+#     q: str = Query(..., min_length=1, description="Search query"),
+#     category_id: Optional[int] = Query(None),
+#     skip: int = Query(0, ge=0),
+#     limit: int = Query(50, ge=1, le=100),
+#     db: Session = Depends(get_db)
+# ):
+#     """Search products by name, SKU, company, tags, or description"""
+#     products = product_crud.search_products(
+#         db=db, query=q, category_id=category_id, skip=skip, limit=limit
+#     )
     
-    # Add category names
-    product_outs = []
-    for product in products:
-        product_out = ProductOut.model_validate(product)
-        if product.category:
-            product_out.category_name = product.category.name
-        product_outs.append(product_out)
+#     # Add category names
+#     product_outs = []
+#     for product in products:
+#         product_out = ProductOut.model_validate(product)
+#         if product.category:
+#             product_out.category_name = product.category.name
+#         product_outs.append(product_out)
     
-    return success_response(
-        data=product_outs,
-        message="Search results fetched successfully"
-    )
+#     return success_response(
+#         data=product_outs,
+#         message="Search results fetched successfully"
+#     )
 
 
 @router.get("/sku/{sku}", response_model=APIResponse[ProductOut])

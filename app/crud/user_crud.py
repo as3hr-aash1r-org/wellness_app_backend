@@ -70,8 +70,10 @@ class CRUDUser:
         result = db.execute(query)
         return result.scalar_one_or_none()
 
-    def get_by_phone(self, db: Session, *, phone_number: str):
+    def get_by_phone(self, db: Session, *, phone_number: str,is_deleted: bool = False):
         query = select(User).where(User.phone_number == phone_number)
+        if not is_deleted:
+            query = query.where(User.is_deleted == False)
         result = db.execute(query)
         return result.scalar_one_or_none()
 
