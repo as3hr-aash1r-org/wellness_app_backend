@@ -57,7 +57,7 @@ def get_all_products(
             products = product_crud.get_by_category(db=db, category_name=category_name, offset=offset, limit=limit)
             total_items = product_crud.count_all(db=db, category_name=category_name)
         else:
-            products = product_crud.get_all(db=db, offset=offset, limit=limit)
+            products = product_crud.get_all(db=db, skip=offset, limit=limit)
             total_items = product_crud.count_all(db=db)
         
         total_pages = math.ceil(total_items / limit) if limit else 1

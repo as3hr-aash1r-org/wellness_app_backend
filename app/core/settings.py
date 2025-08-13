@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-class Settings(BaseSettings):
+class Settings(BaseSettings):   
     database_url: str
     secret_key: str
     algorithm: str
