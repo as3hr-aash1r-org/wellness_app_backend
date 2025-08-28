@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, HttpUrl
+from pydantic import BaseModel, EmailStr
 from typing import Optional
 
 class DXNDirectoryBase(BaseModel):
@@ -16,7 +16,7 @@ class DXNDirectoryBase(BaseModel):
     address_line2: Optional[str] = None
     city: Optional[str] = None
     province_state: Optional[str] = None
-    price_list: Optional[HttpUrl] = None
+    price_list: Optional[str] = None
 
 class DXNDirectoryCreate(DXNDirectoryBase):
     pass
