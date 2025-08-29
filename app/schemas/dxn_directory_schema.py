@@ -11,7 +11,7 @@ class DXNDirectoryBase(BaseModel):
     whatsapp2: Optional[str] = None
     email1: Optional[EmailStr] = None
     email2: Optional[EmailStr] = None
-    website: Optional[HttpUrl] = None
+    website: Optional[str] = None
     address_line1: Optional[str] = None
     address_line2: Optional[str] = None
     city: Optional[str] = None
