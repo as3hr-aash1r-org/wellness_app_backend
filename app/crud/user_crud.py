@@ -7,12 +7,16 @@ from app.models.user import User,UserRole
 from app.schemas.auth_schema import AdminLogin
 from app.schemas.user_schema import UserCreate, ExpertCreate, ExpertUpdate
 from app.utils.country_helper import get_country_details
+from app.utils.referral_code_generator import generate_referral_code
 
 
 class CRUDUser:
     def create_user(self, db: Session, *, obj_in: UserCreate):
         country, country_code = get_country_details(obj_in.phone_number)
 
+        # Generate unique referral code for the new user with country-specific prefix
+        user_referral_code = generate_referral_code(db, country)
+        
         db_obj = User(
             username = obj_in.username,
             phone_number=obj_in.phone_number,
@@ -21,7 +25,8 @@ class CRUDUser:
             sponsor_code=obj_in.sponsor_code,
             distributor_code=obj_in.distributor_code,
             country=country,
-            country_code=country_code
+            country_code=country_code,
+            referral_code=user_referral_code
         )
         db.add(db_obj)
         db.commit()
