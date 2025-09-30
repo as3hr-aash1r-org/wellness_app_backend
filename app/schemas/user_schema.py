@@ -16,6 +16,7 @@ class UserCreate(UserBase):
     sponsor_name: Optional[str] = None
     country: Optional[str] = None
     country_code: Optional[str] = None
+    referral_code: Optional[str] = None  # Optional referral code for signup
 
     # @field_validator("role")
     # def normalize_role(cls, v):
@@ -53,6 +54,7 @@ class UserRead(BaseModel):
     created_at: datetime
     updated_at: Optional[datetime]
     image_url: Optional[str]
+    referral_code: Optional[str]
 
     class Config:
         from_attributes = True
