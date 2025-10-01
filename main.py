@@ -16,9 +16,12 @@ from app.api.v1.routes import (
     dxn_directory,
     referral,
     fact,
+    challenge,
 )
 from app.database.base import Base
 from app.database.session import engine
+import app.models  # Add this line
+
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
@@ -50,6 +53,7 @@ app.include_router(expert.router, prefix='/api')
 app.include_router(dxn_directory.router, prefix="/api")
 app.include_router(referral.router, prefix="/api")
 app.include_router(fact.router, prefix="/api")
+app.include_router(challenge.router, prefix="/api")
 
 @app.exception_handler(StarletteHTTPException)
 async def http_exception_handler(request: Request, exc: StarletteHTTPException):
