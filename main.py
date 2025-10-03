@@ -17,6 +17,7 @@ from app.api.v1.routes import (
     referral,
     fact,
     challenge,
+    wellness,
 )
 from app.database.base import Base
 from app.database.session import engine
@@ -54,6 +55,7 @@ app.include_router(dxn_directory.router, prefix="/api")
 app.include_router(referral.router, prefix="/api")
 app.include_router(fact.router, prefix="/api")
 app.include_router(challenge.router, prefix="/api")
+app.include_router(wellness.router, prefix="/api", tags=["wellness"])
 
 @app.exception_handler(StarletteHTTPException)
 async def http_exception_handler(request: Request, exc: StarletteHTTPException):

@@ -51,6 +51,7 @@ class UserRead(BaseModel):
     distributor_code: Optional[str]
     country: Optional[str]
     country_code: Optional[str]
+    gender: Optional[str]
     created_at: datetime
     updated_at: Optional[datetime]
     image_url: Optional[str]
@@ -61,6 +62,60 @@ class UserRead(BaseModel):
 
 class UpdateProfilePictureRequest(BaseModel):
     image_url: str
+
+
+class ProfileUpdateRequest(BaseModel):
+    """Profile update request - only editable fields"""
+    # Profile section - only username is editable
+    username: Optional[str] = None
+    
+    # DXN Member section - all editable except rank
+    sponsor_name: Optional[str] = None  # Member name in DXN card
+    distributor_code: Optional[str] = None  # Distributor no.
+    sponsor_code: Optional[str] = None  # Sponsor no.
+    
+    # Profile photo
+    image_url: Optional[str] = None
+    
+    @field_validator('username')
+    @classmethod
+    def validate_username(cls, v):
+        if v is not None:
+            if not v.strip():
+                raise ValueError('Username cannot be empty')
+            if len(v.strip()) < 2:
+                raise ValueError('Username must be at least 2 characters long')
+            if len(v.strip()) > 50:
+                raise ValueError('Username cannot exceed 50 characters')
+            return v.strip()
+        return v
+    
+    @field_validator('sponsor_name')
+    @classmethod
+    def validate_sponsor_name(cls, v):
+        if v is not None:
+            if len(v.strip()) > 100:
+                raise ValueError('Sponsor name cannot exceed 100 characters')
+            return v.strip() if v.strip() else None
+        return v
+    
+    @field_validator('distributor_code')
+    @classmethod
+    def validate_distributor_code(cls, v):
+        if v is not None:
+            if len(v.strip()) > 20:
+                raise ValueError('Distributor code cannot exceed 20 characters')
+            return v.strip() if v.strip() else None
+        return v
+    
+    @field_validator('sponsor_code')
+    @classmethod
+    def validate_sponsor_code(cls, v):
+        if v is not None:
+            if len(v.strip()) > 20:
+                raise ValueError('Sponsor code cannot exceed 20 characters')
+            return v.strip() if v.strip() else None
+        return v
 
 class AdminRead(BaseModel):
     id: int

@@ -8,7 +8,7 @@ from app.crud.user_crud import user_crud
 from sqlalchemy.orm import Session
 from datetime import datetime
 from app.schemas.api_response import success_response, APIResponse
-from app.schemas.user_schema import UserCreate, UserRead, UserAll, FCMTokenUpdate, UserUpdate,UpdateProfilePictureRequest
+from app.schemas.user_schema import UserCreate, UserRead, UserAll, FCMTokenUpdate, UserUpdate, UpdateProfilePictureRequest, ProfileUpdateRequest
 router = APIRouter(prefix="/users")
 
 
@@ -97,4 +97,36 @@ def update_user_image(request: UpdateProfilePictureRequest, db: Session = Depend
     return success_response(
         data=current_user,
         message="Profile picture updated successfully"
+    )
+
+
+@router.get("/me/profile", response_model=APIResponse[UserRead])
+@standardize_response
+def get_my_profile(
+    current_user: User = Depends(get_current_user)
+):
+    """Get current user's complete profile"""
+    return success_response(
+        data=UserRead.model_validate(current_user),
+        message="Profile retrieved successfully"
+    )
+
+
+@router.put("/me/profile", response_model=APIResponse[UserRead])
+@standardize_response
+def update_profile(
+    profile_data: ProfileUpdateRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Update user profile - only editable fields (username, DXN member info, profile photo)"""
+    updated_user = user_crud.update_profile(
+        db=db, 
+        user_id=current_user.id, 
+        obj_in=profile_data
+    )
+    
+    return success_response(
+        data=UserRead.model_validate(updated_user),
+        message="Profile updated successfully"
     )
