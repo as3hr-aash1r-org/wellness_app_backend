@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from app.core.security import get_hashed_password, verify_password
 from app.models.user import User,UserRole
 from app.schemas.auth_schema import AdminLogin
-from app.schemas.user_schema import UserCreate, ExpertCreate, ExpertUpdate
+from app.schemas.user_schema import UserCreate, ExpertCreate, ExpertUpdate, ProfileUpdateRequest
 from app.utils.country_helper import get_country_details
 from app.utils.referral_code_generator import generate_referral_code
 
@@ -118,6 +118,28 @@ class CRUDUser:
         update_data = obj_in.model_dump(exclude_unset=True)
         for field, value in update_data.items():
             if hasattr(user, field) and value is not None:
+                setattr(user, field, value)
+                
+        db.commit()
+        db.refresh(user)
+        return user
+    
+    def update_profile(self, db: Session, *, user_id: int, obj_in: ProfileUpdateRequest):
+        """Update user profile with only editable fields"""
+        user = self.get_user_by_id(db, user_id=user_id)
+        if user is None:
+            raise HTTPException(status_code=404, detail="User not found")
+            
+        update_data = obj_in.model_dump(exclude_unset=True)
+        
+        # Only update allowed fields
+        allowed_fields = {
+            'username', 'sponsor_name', 'distributor_code', 
+            'sponsor_code', 'image_url'
+        }
+        
+        for field, value in update_data.items():
+            if field in allowed_fields and hasattr(user, field):
                 setattr(user, field, value)
                 
         db.commit()

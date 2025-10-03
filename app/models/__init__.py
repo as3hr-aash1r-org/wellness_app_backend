@@ -10,6 +10,7 @@ from app.models.product import ProductCategory, Product
 from app.models.referrals import Referrals
 from app.models.user_rewards import UserReward
 from app.models.challenge import Challenge, UserChallenge
+from app.models.wellness import Wellness
 
 __all__ = [
     "User",
@@ -26,5 +27,6 @@ __all__ = [
     "Referrals",
     "UserReward",
     "Challenge",
-    "UserChallenge"
+    "UserChallenge",
+    "Wellness"
 ]
