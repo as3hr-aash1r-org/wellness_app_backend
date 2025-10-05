@@ -13,6 +13,8 @@ from app.services.firebase_service import firebase_notification_service
 from app.schemas.notification_schema import NotificationCreate
 from app.crud.notification_crud import notification_crud
 from app.utils.notification_helper import send_notification
+from app.crud.product_crud import product_crud
+from app.crud.dxn_directory_crud import dxn_directory_crud
 
 
 class ConnectionManager:
@@ -57,6 +59,10 @@ class ConnectionManager:
                 body = "Sent you a voice message"
             elif message_type == "image":
                 body = "Sent you an image"
+            elif message_type == "product":
+                body = "Shared a product with you"
+            elif message_type == "offices":
+                body = "Shared office information with you"
             else:
                 body = "Sent you a message"
 
@@ -167,10 +173,30 @@ class ConnectionManager:
             )
             
         # Validate the message based on type
-        if not message.content or not message.content.strip():
+        if message.type in ["text", "audio", "image"] and (not message.content or not message.content.strip()):
             return WSResponse(
                 type="error",
                 content="Message content cannot be empty",
+                sender_id=message.sender_id,
+                room_id=message.room_id,
+                sender_name=user.username,
+                sender_role=user.role,
+                timestamp=datetime.utcnow()
+            )
+        elif message.type == "product" and not message.product_id:
+            return WSResponse(
+                type="error",
+                content="Product ID is required for product messages",
+                sender_id=message.sender_id,
+                room_id=message.room_id,
+                sender_name=user.username,
+                sender_role=user.role,
+                timestamp=datetime.utcnow()
+            )
+        elif message.type == "offices" and not message.office_id:
+            return WSResponse(
+                type="error",
+                content="Office ID is required for office messages",
                 sender_id=message.sender_id,
                 room_id=message.room_id,
                 sender_name=user.username,
@@ -183,14 +209,25 @@ class ConnectionManager:
             type=message.type,
             room_id=message.room_id,
             sender_id=message.sender_id,
-            content=message.content,
+            content=message.content or "",
             image=message.image,
+            product_id=message.product_id,
+            office_id=message.office_id,
         )
         db_message = message_crud.create_message(db, obj_in=msg_create)
 
         
         # Send notifications to other users in the chat room
         self.send_notifications_to_other_users(db, message.room_id, user, message.type, message.content)
+        
+        # Get product/office details if applicable
+        product_details = None
+        office_details = None
+        
+        if message.type == "product" and message.product_id:
+            product_details = product_crud.get_by_id(db, product_id=message.product_id)
+        elif message.type == "offices" and message.office_id:
+            office_details = dxn_directory_crud.get(db, entry_id=message.office_id)
         
         # Create response
         response = WSResponse(
@@ -203,6 +240,10 @@ class ConnectionManager:
             image=message.image,
             timestamp=db_message.created_at,
             message_id=db_message.id,
+            product_id=message.product_id,
+            office_id=message.office_id,
+            product=product_details,
+            office=office_details,
         )
         
         return response
@@ -254,7 +295,7 @@ class ConnectionManager:
                 
             # Handle different message types
             response = None
-            if message.type in ["text", "audio", "image"]:
+            if message.type in ["text", "audio", "image", "product", "offices"]:
                 response = await self.handle_message(message, db)
             elif message.type == "join":
                 response = await self.handle_join(message, db)

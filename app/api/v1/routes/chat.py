@@ -10,7 +10,7 @@ from app.database.session import get_db
 from app.dependencies.auth_dependency import get_current_user, check_user_permissions
 from app.models.user import User, UserRole
 from app.schemas.api_response import success_response, APIResponse
-from app.schemas.chat_schema import ChatRoomCreate, MessageCreate, ChatRoomRead, MessageRead, ChatRoomWithUser, ChatRoomWithMessages
+from app.schemas.chat_schema import ChatRoomCreate, MessageCreate, ChatRoomRead, MessageRead, ChatRoomWithUser, ChatRoomWithMessages, MessageWithDetails
 
 router = APIRouter(prefix="/chat", tags=["Chat"])
 
@@ -140,7 +140,13 @@ def get_chat_room(
     
     # Mark messages as read
     message_crud.mark_messages_as_read(db, room_id=room_id, user_id=current_user.id)
-    print(chat_room.messages,"chat room in after")
+    
+    # Get messages with product/office details
+    messages_with_details = message_crud.get_messages_with_details(db, room_id=room_id)
+    
+    # Replace the messages in chat_room with detailed messages
+    chat_room.messages = messages_with_details
+    
     return success_response(
         data=chat_room,
         message="Chat room retrieved successfully"
@@ -206,3 +212,5 @@ async def chat_endpoint(websocket: WebSocket, room_id: int, user_id: int, db: Se
     except Exception as e:
         print(f"Error in WebSocket connection: {str(e)}")
         manager.disconnect(websocket)
+
+
