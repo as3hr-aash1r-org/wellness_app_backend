@@ -1,12 +1,14 @@
 from datetime import datetime
-from typing import List, Optional, Dict, Any
-
-from sqlalchemy import select, desc, and_
 from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import select, desc, and_, func
+from typing import List, Optional
 
 from app.models.chat import ChatRoom, Message
 from app.models.user import User, UserRole
+from app.models.product import Product
+from app.models.dxn_directory import DXNDirectory
 from app.schemas.chat_schema import ChatRoomCreate, MessageCreate
+from app.crud.user_crud import user_crud
 
 
 class CRUDChatRoom:
@@ -16,6 +18,9 @@ class CRUDChatRoom:
             name=obj_in.name,
             user_id=obj_in.user_id,
             expert_id=obj_in.expert_id,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
+            is_active=True,
         )
         db.add(db_obj)
         db.commit()
@@ -139,6 +144,8 @@ class CRUDMessage:
             sender_id=obj_in.sender_id,
             content=obj_in.content,
             image=obj_in.image,
+            product_id=obj_in.product_id,
+            office_id=obj_in.office_id,
         )
         db.add(db_obj)
         db.commit()
@@ -157,6 +164,22 @@ class CRUDMessage:
         query = select(Message).where(Message.room_id == room_id).order_by(
             desc(Message.created_at)
         ).offset(offset).limit(limit)
+        result = db.execute(query)
+        return list(result.scalars().all())
+    
+    def get_messages_with_details(self, db: Session, *, room_id: int, limit: int = 50, offset: int = 0) -> List[Message]:
+        """Get messages for a chat room with product/office details included"""
+        query = (
+            select(Message)
+            .options(
+                joinedload(Message.product),
+                joinedload(Message.office)
+            )
+            .where(Message.room_id == room_id)
+            .order_by(desc(Message.created_at))
+            .offset(offset)
+            .limit(limit)
+        )
         result = db.execute(query)
         return list(result.scalars().all())
     
@@ -209,6 +232,16 @@ class CRUDMessage:
         """Get all users in a chat room except the current user"""
         all_users = self.get_chat_room_users(db, room_id=room_id)
         return [user for user in all_users if user.id != current_user_id]
+    
+    def validate_message_data(self, obj_in: MessageCreate) -> bool:
+        """Validate message data based on type"""
+        if obj_in.type == "product":
+            return obj_in.product_id is not None
+        elif obj_in.type == "offices":
+            return obj_in.office_id is not None
+        elif obj_in.type in ["text", "audio", "image"]:
+            return obj_in.content is not None
+        return True
 
 
 chat_room_crud = CRUDChatRoom()

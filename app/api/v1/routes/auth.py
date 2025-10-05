@@ -64,14 +64,14 @@ def register_user(*, db: Session = Depends(get_db), user_in: UserCreate):
             )
             
             if reward_result["success"]:
-                referral_message = f" Referral bonus applied! You received 30 days of discount."
+                referral_message = "Referral bonus: 30 days"
             else:
-                referral_message = f" Referral processed but rewards failed: {reward_result['message']}"
+                referral_message = None
         else:
-            referral_message = f" Referral code issue: {referral_result['message']}"
+            referral_message = None
     
     token = create_access_token(user.id)
-    success_message = f"User created successfully{referral_message}"
+    success_message = f"User created successfully {referral_message}"
     
     return success_response(
         data=LoginResponse(access_token=token, token_type="bearer", user=user),

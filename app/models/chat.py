@@ -29,7 +29,7 @@ class Message(Base):
     __tablename__ = "messages"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    type: Mapped[str] = mapped_column(String, nullable=False)  # text, audio, image
+    type: Mapped[str] = mapped_column(String, nullable=False)  # text, audio, image, product, offices
     room_id: Mapped[int] = mapped_column(Integer, ForeignKey("chat_rooms.id"), nullable=False)
     sender_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)  # Text content or file path for media
@@ -37,6 +37,13 @@ class Message(Base):
     updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     is_read: Mapped[bool] = mapped_column(Boolean, default=False)
     image: Mapped[str] = mapped_column(Text, nullable=True)
+    
+    # New fields for product and office sharing
+    product_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("products.id"), nullable=True)  # For product messages
+    office_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("dxn_directory.id"), nullable=True)  # For office messages
+    
     # Relationships
     chat_room = relationship("ChatRoom", back_populates="messages")
     sender = relationship("User")
+    product = relationship("Product", foreign_keys=[product_id])  # Relationship to Product model
+    office = relationship("DXNDirectory", foreign_keys=[office_id])  # Relationship to DXNDirectory model
