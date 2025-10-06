@@ -28,7 +28,14 @@ class FirebaseNotificationService:
         Returns:
             Response from FCM
         """
+        print(f"🔥 FIREBASE_SERVICE: Starting notification send")
+        print(f"📱 Token: {token[:20]}...")
+        print(f"📝 Title: {title}")
+        print(f"📄 Body: {body}")
+        print(f"📦 Data keys: {list(data.keys()) if data else 'None'}")
+        
         try:
+            print(f"🛠️ FIREBASE_SERVICE: Creating FCM message...")
             # Create message
             message = messaging.Message(
                 notification=messaging.Notification(
@@ -39,11 +46,14 @@ class FirebaseNotificationService:
                 token=token,
             )
             
+            print(f"🚀 FIREBASE_SERVICE: Sending message via FCM...")
             # Send message
             response = messaging.send(message)
+            print(f"✅ FIREBASE_SERVICE: Successfully sent notification! Message ID: {response}")
             return {"success": True, "message_id": response}
         except Exception as e:
-            print(f"Error sending notification: {str(e)}")
+            print(f"❌ FIREBASE_SERVICE: Error sending notification: {str(e)}")
+            print(f"🔍 FIREBASE_SERVICE: Exception type: {type(e).__name__}")
             return {"success": False, "error": str(e)}
     
     @staticmethod
