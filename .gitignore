@@ -3,3 +3,4 @@
 alembic/
 __pycache__/
 app/__pycache__/
+wellness_service_account_key.json
