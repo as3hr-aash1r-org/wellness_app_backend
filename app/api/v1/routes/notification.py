@@ -173,6 +173,8 @@ def broadcast_notification(
         
         # Prepare data for Firebase
         notification_data = {
+            "title":request.title,
+            "body":request.body,
             "type": "broadcast",
             "sender_id": str(current_user.id),
             "sender_username": str(current_user.username or f"User_{current_user.id}"),

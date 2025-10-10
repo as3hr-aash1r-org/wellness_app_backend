@@ -13,7 +13,7 @@ class NotificationCreate(NotificationBase):
 
 class SenderOut(BaseModel):
     id: int
-    username: str
+    username: Optional[str] = None
     image_url: Optional[str] = None
 
     class Config:
