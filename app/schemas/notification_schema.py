@@ -26,3 +26,8 @@ class NotificationOut(NotificationBase):
 
     class Config:
         from_attributes = True
+
+class BroadcastNotificationRequest(BaseModel):
+    title: str
+    body: str
+    role_filter: Optional[str] = None

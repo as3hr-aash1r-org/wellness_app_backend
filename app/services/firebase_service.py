@@ -10,7 +10,7 @@ try:
     cred = credentials.Certificate(cred_path)
     firebase_admin.initialize_app(cred)
 except Exception as e:
-    print(f"Firebase initialization error: {str(e)}")
+    pass
 
 
 class FirebaseNotificationService:
@@ -28,32 +28,30 @@ class FirebaseNotificationService:
         Returns:
             Response from FCM
         """
-        print(f"🔥 FIREBASE_SERVICE: Starting notification send")
-        print(f"📱 Token: {token[:20]}...")
-        print(f"📝 Title: {title}")
-        print(f"📄 Body: {body}")
-        print(f"📦 Data keys: {list(data.keys()) if data else 'None'}")
         
         try:
-            print(f"🛠️ FIREBASE_SERVICE: Creating FCM message...")
+            # Ensure all data values are strings
+            string_data = {}
+            if data:
+                for key, value in data.items():
+                    string_data[key] = str(value) if value is not None else ""
+            
+            print(f"🔥 FIREBASE_SERVICE: Single notification data: {string_data}")
+            
             # Create message
             message = messaging.Message(
                 notification=messaging.Notification(
                     title=title,
                     body=body,
                 ),
-                data=data or {},
+                data=string_data,
                 token=token,
             )
             
-            print(f"🚀 FIREBASE_SERVICE: Sending message via FCM...")
             # Send message
             response = messaging.send(message)
-            print(f"✅ FIREBASE_SERVICE: Successfully sent notification! Message ID: {response}")
             return {"success": True, "message_id": response}
         except Exception as e:
-            print(f"❌ FIREBASE_SERVICE: Error sending notification: {str(e)}")
-            print(f"🔍 FIREBASE_SERVICE: Exception type: {type(e).__name__}")
             return {"success": False, "error": str(e)}
     
     @staticmethod
@@ -74,27 +72,47 @@ class FirebaseNotificationService:
             return {"success": False, "error": "No tokens provided"}
             
         try:
-            # Create multicast message
+            # Ensure all data values are strings
+            string_data = {}
+            if data:
+                for key, value in data.items():
+                    string_data[key] = str(value) if value is not None else ""
+            
+            # Ensure all tokens are strings
+            string_tokens = [str(token) for token in tokens]
+            
+            print(f"🔥 FIREBASE_SERVICE: Multicast data: {string_data}")
+            print(f"🔥 FIREBASE_SERVICE: Token count: {len(string_tokens)}")
+            
+            # Create multicast message using send_each_for_multicast (more reliable)
             message = messaging.MulticastMessage(
+                data=string_data,
                 notification=messaging.Notification(
-                    title=title,
-                    body=body,
+                    title=str(title),
+                    body=str(body)
                 ),
-                data=data or {},
-                tokens=tokens,
+                tokens=string_tokens,
             )
             
-            # Send multicast message
-            response = messaging.send_multicast(message)
+            # Send multicast message using send_each_for_multicast
+            response = messaging.send_each_for_multicast(message)
+            
+            # Log individual results
+            for i, resp in enumerate(response.responses):
+                if resp.success:
+                    print(f"✅ Notification successfully sent to token {string_tokens[i][:10]}...")
+                else:
+                    print(f"❌ Failed to send notification to token {string_tokens[i][:10]}...: {resp.exception}")
+            
+            print(f"📊 FIREBASE_SERVICE: Multicast complete - Success: {response.success_count}, Failed: {response.failure_count}")
             
             return {
-                "success": True,
+                "success": response.success_count > 0,
                 "success_count": response.success_count,
                 "failure_count": response.failure_count,
-                "responses": [r.success for r in response.responses]
+                "responses": response.responses
             }
         except Exception as e:
-            print(f"Error sending multicast notification: {str(e)}")
             return {"success": False, "error": str(e)}
 
 

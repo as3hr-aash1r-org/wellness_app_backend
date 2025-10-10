@@ -3,6 +3,7 @@ from sqlalchemy import Column, Integer, String, Boolean, DateTime, Date, Float, 
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from enum import Enum
 from app.database.base import Base
+from app.models.user_rewards import UserReward
 
 
 class ChallengeType(str, Enum):
@@ -124,11 +125,11 @@ class UserChallenge(Base):
         
         # Calculate percentage
         self.progress_percentage = min((self.current_progress / self.challenge.duration) * 100, 100.0)
-        
         # Auto-complete if target reached
         if self.current_progress >= self.challenge.duration:
             self.status = ChallengeStatus.completed
             self.completed_at = datetime.utcnow()
+            
             return {"success": True, "message": "Challenge completed! 🎉", "completed": True}
         
         return {"success": True, "message": "Progress updated successfully!", "completed": False}

@@ -252,7 +252,7 @@ class CRUDChallenge:
         
         # If challenge is completed, create reward
         if user_challenge.status == ChallengeStatus.completed and not user_challenge.completed_at:
-            self._create_challenge_reward(db, user_challenge)
+            self.create_challenge_reward(db, user_challenge)
 
         db.commit()
         db.refresh(user_challenge)
@@ -270,7 +270,7 @@ class CRUDChallenge:
         for user_challenge in active_challenges:
             user_challenge.update_progress()
             if user_challenge.status == ChallengeStatus.completed:
-                self._create_challenge_reward(db, user_challenge)
+                self.create_challenge_reward(db, user_challenge)
                 completed_challenges.append(user_challenge)
         
         if completed_challenges:
@@ -278,23 +278,26 @@ class CRUDChallenge:
         
         return len(completed_challenges)
 
-    def _create_challenge_reward(self, db: Session, user_challenge: UserChallenge):
+    def create_challenge_reward(self, db: Session, user_challenge: UserChallenge):
         """Create reward for completed challenge"""
         challenge = user_challenge.challenge
         
         # Determine reward time type
         reward_time_type = RewardTimeType.hour if challenge.reward_time_type == 'hour' else RewardTimeType.day
-        
+        print(f"HERERER 2", challenge.reward_time)
         reward = UserReward(
             user_id=user_challenge.user_id,
-            reward_type=RewardType.challenge_reward,
+            reward_type=RewardType.referral_bonus,
             description=f"Challenge completed: {challenge.title}",
             reward_time=challenge.reward_time,
             reward_time_type=reward_time_type,
             user_challenge_id=user_challenge.id
         )
-        
+        print(f"USER ID IN REWARD: ",user_challenge.user_id)
         db.add(reward)
+        db.commit()
+        db.refresh(reward)
+        return reward
 
     def get_user_challenge_stats(self, db: Session, *, user_id: int) -> dict:
         """Get challenge statistics for a user"""

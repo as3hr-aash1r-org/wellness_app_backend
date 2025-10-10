@@ -99,7 +99,7 @@ class CRUDReward:
         """Get a summary of user's rewards with flexible time units"""
         all_rewards = self.get_user_rewards(db, user_id=user_id)
         active_rewards = self.get_active_rewards(db, user_id=user_id)
-        
+
         # Calculate total time by type
         total_hours = sum(reward.reward_time for reward in active_rewards 
                          if reward.reward_time_type == RewardTimeType.hour and reward.reward_time is not None)
