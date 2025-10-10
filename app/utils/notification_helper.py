@@ -16,25 +16,15 @@ def send_notification(
     target_user: User,
     sender: User
 ):
-    print(f"🔔 NOTIFICATION_HELPER: Starting notification process")
-    print(f"📋 Target: {target_user.username} (ID: {target_user.id})")
-    print(f"👤 Sender: {sender.username} (ID: {sender.id})")
-    print(f"📝 Title: {title}")
-    print(f"📄 Body: {body}")
-    print(f"🏷️ Type: {type}")
     
     if not target_user:
-        print(f"❌ NOTIFICATION_HELPER: Target user not found")
         raise ValueError("Target user not found")
 
     if not target_user.fcm_token:
-        print(f"❌ NOTIFICATION_HELPER: Target user {target_user.id} has no FCM token")
         raise ValueError("Target user has no FCM token")
     
-    print(f"📱 NOTIFICATION_HELPER: FCM Token exists: {target_user.fcm_token[:20]}...")
 
     # Save to DB
-    print(f"💾 NOTIFICATION_HELPER: Saving notification to database...")
     notification_in = NotificationCreate(
         title=title,
         body=body,
@@ -43,7 +33,6 @@ def send_notification(
         sender_id=sender.id
     )
     notification = notification_crud.create(db, notification_in)
-    print(f"✅ NOTIFICATION_HELPER: Notification saved with ID: {notification.id}")
 
     user_info = {
         "id": str(sender.id),
@@ -51,8 +40,6 @@ def send_notification(
         "image_url": sender.image_url or ""
     }
 
-    print(f"🚀 NOTIFICATION_HELPER: Sending Firebase notification to user {target_user.id}")
-    print(f"📱 NOTIFICATION_HELPER: Token: {target_user.fcm_token[:20]}...")
 
     firebase_result = firebase_notification_service.send_notification(
         token=target_user.fcm_token,
@@ -69,12 +56,6 @@ def send_notification(
         }
     )
     
-    print(f"📊 NOTIFICATION_HELPER: Firebase result: {firebase_result}")
     
-    if firebase_result.get('success'):
-        print(f"✅ NOTIFICATION_HELPER: Firebase notification sent successfully")
-    else:
-        print(f"❌ NOTIFICATION_HELPER: Firebase notification failed: {firebase_result.get('error')}")
 
-    print(f"🎉 NOTIFICATION_HELPER: Notification process completed")
     return notification

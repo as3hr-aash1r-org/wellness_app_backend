@@ -34,36 +34,26 @@ class ConnectionManager:
     def send_notifications_to_other_users(
     self, db: Session, room_id: int, sender: User, message_type: str, message_content: str
     ):
-        print(f"🔔 WEBSOCKET_MANAGER: Starting notification process for room {room_id}")
-        print(f"👤 Sender: {sender.username} (ID: {sender.id})")
-        print(f"🏷️ Message type: {message_type}")
-        print(f"📝 Content preview: {message_content[:50] if message_content else 'None'}...")
         """Send FCM notifications to other users in the chat room (if not connected)"""
         try:
             chat_room = chat_room_crud.get_chat_room(db, room_id=room_id)
             if not chat_room:
-                print(f"❌ WEBSOCKET_MANAGER: Chat room {room_id} not found")
                 return
             
-            print(f"✅ WEBSOCKET_MANAGER: Chat room found - User: {chat_room.user_id}, Expert: {chat_room.expert_id}")
 
             # Determine the other participant(s)
             other_users = []
-            print(f"🔍 WEBSOCKET_MANAGER: Finding other participants...")
             
             if chat_room.user_id != sender.id:
                 user = user_crud.get_user_by_id(db,user_id= chat_room.user_id)
                 if user:
                     other_users.append(user)
-                    print(f"👤 WEBSOCKET_MANAGER: Added user {user.username} (ID: {user.id}) to notification list")
                     
             if chat_room.expert_id and chat_room.expert_id != sender.id:
                 expert = user_crud.get_user_by_id(db, user_id= chat_room.expert_id)
                 if expert:
                     other_users.append(expert)
-                    print(f"👨‍⚕️ WEBSOCKET_MANAGER: Added expert {expert.username} (ID: {expert.id}) to notification list")
             
-            print(f"📊 WEBSOCKET_MANAGER: Total users to notify: {len(other_users)}")
             # Format message body based on message type
             if message_type == "text":
                 body = message_content if len(message_content) <= 50 else f"{message_content[:47]}..."
@@ -81,15 +71,11 @@ class ConnectionManager:
 
             # Send individual notifications
             for user in other_users:
-                print(f"🔍 WEBSOCKET_MANAGER: Processing user {user.username} (ID: {user.id})")
-                print(f"📱 WEBSOCKET_MANAGER: Has FCM token: {bool(user.fcm_token)}")
                 
                 is_connected = self.is_user_connected(user.id, room_id)
-                print(f"🔗 WEBSOCKET_MANAGER: User connected to room: {is_connected}")
                 
                 if user.fcm_token and not is_connected:
                     try:
-                        print(f"🚀 WEBSOCKET_MANAGER: Sending notification to {user.username}...")
                         send_notification(
                             db=db,
                             title=f"New message",
@@ -98,17 +84,15 @@ class ConnectionManager:
                             target_user=user,
                             sender=sender
                         )
-                        print(f"✅ WEBSOCKET_MANAGER: Notification sent successfully to {user.username}")
                     except Exception as e:
-                        print(f"❌ WEBSOCKET_MANAGER: Failed to send chat notification to user {user.id}: {e}")
+                        pass
                 elif not user.fcm_token:
-                    print(f"⚠️ WEBSOCKET_MANAGER: Skipping {user.username} - no FCM token")
+                    pass
                 elif is_connected:
-                    print(f"🔗 WEBSOCKET_MANAGER: Skipping {user.username} - already connected to room")
+                    pass
 
         except Exception as e:
-            print(f"❌ WEBSOCKET_MANAGER: Error in notification process: {str(e)}")
-            print(f"🔍 WEBSOCKET_MANAGER: Exception type: {type(e).__name__}")
+            pass
 
     async def connect(self, websocket: WebSocket, room_id: int, user_id: int, user_role: UserRole):
         """Connect a user to a chat room"""
@@ -128,7 +112,6 @@ class ConnectionManager:
             "role": user_role
         }
         
-        print(f"User {user_id} connected to room {room_id} as {user_role}")
         
     def disconnect(self, websocket: WebSocket):
         """Disconnect a user from a chat room"""
@@ -149,7 +132,6 @@ class ConnectionManager:
             # Remove connection details
             del self.connection_details[websocket]
             
-            print(f"User {user_id} disconnected from room {room_id}")
             
     async def send_personal_message(self, message: str, websocket: WebSocket):
         """Send a message to a specific connection"""
@@ -312,7 +294,6 @@ class ConnectionManager:
             # Parse the message
             message_data = json.loads(data)
             message = WSMessage(**message_data)
-            print(message,"incoming messageee")
             
             # Get connection details
             details = self.connection_details.get(websocket)
@@ -336,7 +317,6 @@ class ConnectionManager:
         except json.JSONDecodeError:
             await websocket.send_text(json.dumps({"error": "Invalid JSON format"}))
         except Exception as e:
-            print(f"Error processing message: {str(e)}")
             await websocket.send_text(json.dumps({"error": str(e)}))
 
 

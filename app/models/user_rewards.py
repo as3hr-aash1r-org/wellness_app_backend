@@ -47,6 +47,10 @@ class UserReward(Base):
     
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        # Set created_at if not provided (SQLAlchemy default only applies on DB insert)
+        if not self.created_at:
+            self.created_at = datetime.utcnow()
+        
         # Set expiration date based on reward time if not provided
         if not self.expires_at and self.reward_time is not None:
             if self.reward_time_type == RewardTimeType.hour:

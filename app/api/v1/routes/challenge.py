@@ -474,6 +474,8 @@ def update_challenge_progress(
     # Save changes to database
     db.commit()
     db.refresh(user_challenge)
+    if user_challenge.status == ChallengeStatus.completed:
+        challenge_crud.create_challenge_reward(db, user_challenge)
     
     # Create flattened response structure
     flattened_data = {
