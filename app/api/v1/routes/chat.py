@@ -44,7 +44,7 @@ def create_chat_room(*, db: Session = Depends(get_db), current_user: User = Depe
     if current_user.role == UserRole.user:
         expert = None
         try:
-            expert = user_crud.get_by_phone(db, phone_number="+16824347910")
+            expert = user_crud.get_by_phone(db, phone_number="+923158244152")
         except Exception as e:
             # If anything goes wrong (e.g., user table empty) fallback to load-balancer
             print(f"Phone-based expert mapping failed: {e}")
