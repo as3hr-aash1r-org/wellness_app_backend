@@ -3,6 +3,7 @@ from typing import Optional
 
 class DXNDirectoryBase(BaseModel):
     country: str
+    name: Optional[str] = None
     person: str
     position: Optional[str] = None
     phone1: Optional[str] = None

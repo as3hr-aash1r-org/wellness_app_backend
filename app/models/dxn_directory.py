@@ -6,6 +6,7 @@ class DXNDirectory(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     country = Column(String, nullable=False)
+    name = Column(String, nullable=True)
     person = Column(String, nullable=False)
     position = Column(String, nullable=True)
     phone1 = Column(String, nullable=True)
