@@ -55,6 +55,8 @@ def get_all_products(
             total_items = product_crud.search_count(db=db, query=search)
         elif category_name:
             products = product_crud.get_by_category(db=db, category_name=category_name, offset=offset, limit=limit)
+            print(products,"products")
+            print(category_name,"category_name")
             total_items = product_crud.count_all(db=db, category_name=category_name)
         else:
             products = product_crud.get_all(db=db, skip=offset, limit=limit)

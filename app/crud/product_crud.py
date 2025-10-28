@@ -133,24 +133,21 @@ class ProductCRUD:
         offset: int = 0,
         limit: int = 100
     ) -> List[Product]:
-        categories = [
-            "Health and Dietary Suppliments",
-            "Personal Care and Cosmetics",
-            "Food and Beverages",
-            "Others"
-        ]
+        categories = db.query(ProductCategory).all()
         category_name_normalized = category_name.strip().lower()
-        categories_lower = [c.lower() for c in categories]
+        print(category_name_normalized,"category_name_normalized")
+        categories_lower = [c.name.lower() for c in categories]
+        print(categories_lower,"categories_lower")
 
         if category_name_normalized not in categories_lower:
             raise HTTPException(status_code=404, detail="Category not found")
 
         query = db.query(Product).join(ProductCategory).options(joinedload(Product.category))
 
-        if category_name_normalized == "others":
-            query = query.filter(~func.lower(ProductCategory.name).in_(categories_lower))
-        else:
-            query = query.filter(func.lower(ProductCategory.name) == category_name_normalized)
+        # if category_name_normalized == "others":
+        #     query = query.filter(~func.lower(ProductCategory.name).in_(categories_lower))
+        # else:
+        query = query.filter(func.lower(ProductCategory.name) == category_name_normalized)
 
         return query.offset(offset).limit(limit).all()
     
