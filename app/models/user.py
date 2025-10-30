@@ -25,6 +25,9 @@ class User(Base):
     fcm_token: Mapped[str] = mapped_column(String, nullable=True) # Asher's code
     sponsor_code: Mapped[str] = mapped_column(String, nullable=True)
     distributor_code: Mapped[str] = mapped_column(String, nullable=True)
+    distributor_rank: Mapped[str] = mapped_column(String, nullable=True)
+    member_name: Mapped[str] = mapped_column(String, nullable=True)
+    sponsor_rank: Mapped[str] = mapped_column(String, nullable=True)
     # email: Mapped[str] = mapped_column(String, nullable=False, unique=True)
     password_hash: Mapped[str] = mapped_column(String, nullable=True)
     role: Mapped[UserRole] = mapped_column(SQLAEnum(UserRole), nullable=False)

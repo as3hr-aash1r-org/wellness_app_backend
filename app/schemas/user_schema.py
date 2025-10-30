@@ -56,6 +56,11 @@ class UserRead(BaseModel):
     updated_at: Optional[datetime]
     image_url: Optional[str]
     referral_code: Optional[str]
+    distributor_rank: Optional[str]
+    member_name: Optional[str]
+    sponsor_rank: Optional[str]
+    email: Optional[str]
+    gender: Optional[str]
 
     class Config:
         from_attributes = True
@@ -73,6 +78,11 @@ class ProfileUpdateRequest(BaseModel):
     sponsor_name: Optional[str] = None  # Member name in DXN card
     distributor_code: Optional[str] = None  # Distributor no.
     sponsor_code: Optional[str] = None  # Sponsor no.
+    distributor_rank: Optional[str] = None  # Distributor rank
+    member_name: Optional[str] = None  # Member name in DXN card
+    sponsor_rank: Optional[str] = None  # Sponsor rank
+    email: Optional[str] = None  # Email
+    gender: Optional[str] = None  # Gender
     
     # Profile photo
     image_url: Optional[str] = None

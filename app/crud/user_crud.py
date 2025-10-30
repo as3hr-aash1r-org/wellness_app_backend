@@ -135,7 +135,7 @@ class CRUDUser:
         # Only update allowed fields
         allowed_fields = {
             'username', 'sponsor_name', 'distributor_code', 
-            'sponsor_code', 'image_url'
+            'sponsor_code', 'image_url','distributor_rank','member_name','sponsor_rank','email','gender'
         }
         
         for field, value in update_data.items():
