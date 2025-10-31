@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends,HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.core.decorators import standardize_response
 from app.database.session import get_db
@@ -8,17 +8,25 @@ from app.crud.user_crud import user_crud
 from sqlalchemy.orm import Session
 from datetime import datetime
 from app.schemas.api_response import success_response, APIResponse
+import math
 from app.schemas.user_schema import UserCreate, UserRead, UserAll, FCMTokenUpdate, UserUpdate, UpdateProfilePictureRequest, ProfileUpdateRequest
 router = APIRouter(prefix="/users")
 
 
 @router.get("/", response_model=APIResponse[list[UserAll]])
 @standardize_response
-def get_users(db: Session = Depends(get_db),
-              current_user: User = Depends(check_user_permissions(UserRole.admin))):
-    users = user_crud.get_all_users(db=db)
+def get_users(
+    current_page: int = Query(1, ge=1, description="Current page number"),
+    limit: int = Query(25, ge=1, le=25),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(check_user_permissions(UserRole.admin))
+):
+    skip = (current_page - 1) * limit
+    users = user_crud.get_all_users(db=db, skip=skip, limit=limit)
+    total_items = user_crud.count_all_users(db=db)
+    total_pages = math.ceil(total_items / limit) if limit else 1
     safe_users = [UserAll.model_validate(user) for user in users]
-    return success_response(data=safe_users, message="Users fetched successfully")
+    return success_response(data=safe_users, message="Users fetched successfully", total_pages=total_pages)
 
 
 @router.get("/{user_id}", response_model=APIResponse[UserRead])

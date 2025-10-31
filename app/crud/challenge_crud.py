@@ -41,6 +41,14 @@ class CRUDChallenge:
         result = db.execute(query)
         return result.scalars().all()
     
+    def count_challenges_by_type(self, db: Session, *, challenge_type: ChallengeType) -> int:
+        """Count challenges by type"""
+        query = select(func.count(Challenge.id)).where(
+            and_(Challenge.type == challenge_type, Challenge.is_active == True)
+        )
+        result = db.execute(query)
+        return result.scalar()
+    
     def get_challenges_by_type_with_user_status(self, db: Session, *, challenge_type: ChallengeType, user_id: int, skip: int = 0, limit: int = 100) -> List[dict]:
         """Get all active challenges by type with user participation status"""
         # Get all active challenges of this type
@@ -89,6 +97,14 @@ class CRUDChallenge:
         query = query.offset(skip).limit(limit).order_by(Challenge.created_at.desc())
         result = db.execute(query)
         return result.scalars().all()
+    
+    def count_all_challenges(self, db: Session, *, include_inactive: bool = False) -> int:
+        """Count all challenges"""
+        query = select(func.count(Challenge.id))
+        if not include_inactive:
+            query = query.where(Challenge.is_active == True)
+        result = db.execute(query)
+        return result.scalar()
     
     def get_all_challenges_with_user_status(self, db: Session, *, user_id: int, skip: int = 0, limit: int = 100, include_inactive: bool = False) -> List[dict]:
         """Get all challenges with user participation status"""
@@ -224,6 +240,14 @@ class CRUDChallenge:
         query = query.offset(skip).limit(limit).order_by(UserChallenge.created_at.desc())
         result = db.execute(query)
         return result.scalars().all()
+    
+    def count_user_challenges(self, db: Session, *, user_id: int, status: Optional[ChallengeStatus] = None) -> int:
+        """Count user challenges"""
+        query = select(func.count(UserChallenge.id)).where(UserChallenge.user_id == user_id)
+        if status:
+            query = query.where(UserChallenge.status == status)
+        result = db.execute(query)
+        return result.scalar()
 
     def update_user_challenge_status(self, db: Session, *, user_challenge_id: int, obj_in: UserChallengeUpdate) -> UserChallenge:
         """Update user challenge status"""

@@ -16,6 +16,7 @@ from app.schemas.challenge_schema import (
     UserChallengeCreate, UserChallengeRead, UserChallengeUpdate,
     ChallengeStatsResponse, RewardSummaryResponse
 )
+import math
 
 
 router = APIRouter(prefix="/challenges", tags=["Challenges"])
@@ -50,10 +51,10 @@ def create_challenge(
 @router.get("/", response_model=APIResponse[List[dict]])
 @standardize_response
 def get_all_challenges(
-    db: Session = Depends(get_db),
-    skip: int = Query(0, ge=0),
+    current_page: int = Query(1, ge=1, description="Current page number"),
     limit: int = Query(100, ge=1, le=100),
     include_inactive: bool = Query(False),
+    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """Get all challenges with flattened response and user participation status"""
@@ -62,7 +63,10 @@ def get_all_challenges(
         include_inactive = False
     
     # Get all challenges
+    skip = (current_page - 1) * limit
     challenges = challenge_crud.get_all_challenges(db=db, skip=skip, limit=limit, include_inactive=include_inactive)
+    total_items = challenge_crud.count_all_challenges(db=db, include_inactive=include_inactive)
+    total_pages = math.ceil(total_items / limit) if limit else 1
     
     # Get user's participation status for these challenges
     challenge_ids = [c.id for c in challenges]
@@ -115,7 +119,8 @@ def get_all_challenges(
     
     return success_response(
         data=flattened_data,
-        message="Challenges retrieved successfully"
+        message="Challenges retrieved successfully",
+        total_pages=total_pages
     )
 
 
@@ -123,14 +128,17 @@ def get_all_challenges(
 @standardize_response
 def get_challenges_by_type(
     challenge_type: ChallengeType,
+    current_page: int = Query(1, ge=1, description="Current page number"),
+    limit: int = Query(100, ge=1, le=100),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-    skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=100)
+    current_user: User = Depends(get_current_user)
 ):
     """Get all active challenges by type with flattened response and user participation status"""
     # Get all active challenges of this type
+    skip = (current_page - 1) * limit
     challenges = challenge_crud.get_challenges_by_type(db=db, challenge_type=challenge_type, skip=skip, limit=limit)
+    total_items = challenge_crud.count_challenges_by_type(db=db, challenge_type=challenge_type)
+    total_pages = math.ceil(total_items / limit) if limit else 1
     
     # Get user's participation status for these challenges
     challenge_ids = [c.id for c in challenges]
@@ -183,23 +191,27 @@ def get_challenges_by_type(
     
     return success_response(
         data=flattened_data,
-        message=f"{challenge_type.value.title()} challenges retrieved successfully"
+        message=f"{challenge_type.value.title()} challenges retrieved successfully",
+        total_pages=total_pages
     )
 
 
 @router.get("/my-challenges", response_model=APIResponse[List[dict]])
 @standardize_response
 def get_my_challenges(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
     status: Optional[ChallengeStatus] = Query(None),
-    skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=100)
+    current_page: int = Query(1, ge=1, description="Current page number"),
+    limit: int = Query(100, ge=1, le=100),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """Get current user's challenges with flattened response"""
+    skip = (current_page - 1) * limit
     user_challenges = challenge_crud.get_user_challenges(
         db=db, user_id=current_user.id, status=status, skip=skip, limit=limit
     )
+    total_items = challenge_crud.count_user_challenges(db=db, user_id=current_user.id, status=status)
+    total_pages = math.ceil(total_items / limit) if limit else 1
     
     # Create flattened response structure
     flattened_data = []
@@ -242,7 +254,8 @@ def get_my_challenges(
     
     return success_response(
         data=flattened_data,
-        message="User challenges retrieved successfully"
+        message="User challenges retrieved successfully",
+        total_pages=total_pages
     )
 
 
@@ -403,22 +416,26 @@ def join_challenge(
 @standardize_response
 def get_user_challenges(
     user_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
     status: Optional[ChallengeStatus] = Query(None),
-    skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=100)
+    current_page: int = Query(1, ge=1, description="Current page number"),
+    limit: int = Query(100, ge=1, le=100),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """Get challenges for a specific user (Admin only or own challenges)"""
     if current_user.role.value != "admin" and current_user.id != user_id:
         raise HTTPException(status_code=403, detail="You can only view your own challenges")
     
+    skip = (current_page - 1) * limit
     user_challenges = challenge_crud.get_user_challenges(
         db=db, user_id=user_id, status=status, skip=skip, limit=limit
     )
+    total_items = challenge_crud.count_user_challenges(db=db, user_id=user_id, status=status)
+    total_pages = math.ceil(total_items / limit) if limit else 1
     return success_response(
         data=user_challenges,
-        message="User challenges retrieved successfully"
+        message="User challenges retrieved successfully",
+        total_pages=total_pages
     )
 
 

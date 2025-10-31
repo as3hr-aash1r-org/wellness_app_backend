@@ -10,16 +10,22 @@ class NotificationCRUD:
         db.refresh(notification)
         return notification
 
-    def get_all(self, db: Session):
-        return db.query(Notifications).order_by(Notifications.created_at.desc()).all()
+    def get_all(self, db: Session, skip: int = 0, limit: int = 100):
+        return db.query(Notifications).order_by(Notifications.created_at.desc()).offset(skip).limit(limit).all()
+    
+    def count_all(self, db: Session):
+        return db.query(Notifications).count()
 
     def get(self, db: Session, notification_id: int):
         return db.query(Notifications).filter(Notifications.id == notification_id).first()
 
-    def get_all_for_user(self, db: Session, user_id: int):
+    def get_all_for_user(self, db: Session, user_id: int, skip: int = 0, limit: int = 100):
         return db.query(Notifications).options(joinedload(Notifications.sender)).filter(
             Notifications.target_user_id == user_id
-        ).order_by(Notifications.created_at.desc()).all()
+        ).order_by(Notifications.created_at.desc()).offset(skip).limit(limit).all()
+    
+    def count_for_user(self, db: Session, user_id: int):
+        return db.query(Notifications).filter(Notifications.target_user_id == user_id).count()
 
     def update(self, db: Session, notification_id: int, obj_in: NotificationCreate):
         notification = self.get(db, notification_id)

@@ -1,6 +1,6 @@
 from typing import List, Optional
 from fastapi import HTTPException
-from sqlalchemy import select, and_
+from sqlalchemy import select, and_, func
 from sqlalchemy.orm import Session
 
 from app.models.fact import Fact, FactType
@@ -38,12 +38,24 @@ class CRUDFact:
         query = select(Fact).where(Fact.type == fact_type).offset(skip).limit(limit).order_by(Fact.created_at.desc())
         result = db.execute(query)
         return result.scalars().all()
+    
+    def count_facts_by_type(self, db: Session, *, fact_type: FactType) -> int:
+        """Count facts by type"""
+        query = select(func.count(Fact.id)).where(Fact.type == fact_type)
+        result = db.execute(query)
+        return result.scalar()
 
     def get_all_facts(self, db: Session, *, skip: int = 0, limit: int = 100) -> List[Fact]:
         """Get all facts with pagination"""
         query = select(Fact).offset(skip).limit(limit).order_by(Fact.created_at.desc())
         result = db.execute(query)
         return result.scalars().all()
+    
+    def count_all_facts(self, db: Session) -> int:
+        """Count all facts"""
+        query = select(func.count(Fact.id))
+        result = db.execute(query)
+        return result.scalar()
 
     def get_tip_of_the_day(self, db: Session, *, fact_type: FactType) -> Optional[Fact]:
         """Get the current tip of the day for a specific type"""

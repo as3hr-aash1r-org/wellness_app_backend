@@ -99,27 +99,34 @@ class ProductCRUD:
     #         .options(joinedload(Product.category))
     #         .all()
     #     )
-    def count_all(self, db: Session, category_name: Optional[str] = None, status: Optional[str] = None) -> int:
-        query = db.query(Product).join(ProductCategory)
+    def count_all(self, db: Session, category_id: Optional[int] = None, category_name: Optional[str] = None, status: Optional[str] = None) -> int:
+        query = db.query(Product)
 
-        categories = [
-            "Health and Dietary Suppliments",
-            "Personal Care and Cosmetics",
-            "Food and Beverages",
-            "Others"
-        ]
-        categories_lower = [c.lower() for c in categories]
-
-        if category_name:
-            category_name_normalized = category_name.strip().lower()
-
-            if category_name_normalized not in categories_lower:
+        if category_id:
+            # Verify category exists
+            category = db.query(ProductCategory).filter(ProductCategory.id == category_id).first()
+            if not category:
+                raise HTTPException(status_code=404, detail=f"Category with ID {category_id} not found")
+            
+            query = query.filter(Product.category_id == category_id)
+            
+        elif category_name:
+            # Backward compatibility support
+            # Try exact match first
+            category = db.query(ProductCategory).filter(
+                ProductCategory.name == category_name.strip()
+            ).first()
+            
+            # If not found, try case-insensitive match
+            if not category:
+                category = db.query(ProductCategory).filter(
+                    func.lower(ProductCategory.name) == category_name.strip().lower()
+                ).first()
+            
+            if not category:
                 raise HTTPException(status_code=404, detail="Category not found")
-
-            if category_name_normalized == "others":
-                query = query.filter(~func.lower(ProductCategory.name).in_(categories_lower))
-            else:
-                query = query.filter(func.lower(ProductCategory.name) == category_name_normalized)
+            
+            query = query.filter(Product.category_id == category.id)
 
         if status:
             query = query.filter(Product.status == status)
@@ -133,21 +140,46 @@ class ProductCRUD:
         offset: int = 0,
         limit: int = 100
     ) -> List[Product]:
-        categories = db.query(ProductCategory).all()
-        category_name_normalized = category_name.strip().lower()
-        print(category_name_normalized,"category_name_normalized")
-        categories_lower = [c.name.lower() for c in categories]
-        print(categories_lower,"categories_lower")
+        """Get products by category name - kept for backward compatibility, use get_by_category_id instead"""
+        # Try exact match first
+        category = db.query(ProductCategory).filter(
+            ProductCategory.name == category_name.strip()
+        ).first()
+        
+        # If not found, try case-insensitive match
+        if not category:
+            category = db.query(ProductCategory).filter(
+                func.lower(ProductCategory.name) == category_name.strip().lower()
+            ).first()
+        
+        if not category:
+            all_categories = db.query(ProductCategory).all()
+            raise HTTPException(status_code=404, detail=f"Category '{category_name}' not found. Available categories: {[c.name for c in all_categories]}")
 
-        if category_name_normalized not in categories_lower:
-            raise HTTPException(status_code=404, detail="Category not found")
+        # Get products for this category
+        query = db.query(Product).filter(
+            Product.category_id == category.id
+        ).options(joinedload(Product.category))
 
-        query = db.query(Product).join(ProductCategory).options(joinedload(Product.category))
+        return query.offset(offset).limit(limit).all()
+    
+    def get_by_category_id(
+        self,
+        db: Session,
+        category_id: int,
+        offset: int = 0,
+        limit: int = 100
+    ) -> List[Product]:
+        """Get products by category ID - more efficient and reliable than category name"""
+        # Verify category exists
+        category = db.query(ProductCategory).filter(ProductCategory.id == category_id).first()
+        if not category:
+            raise HTTPException(status_code=404, detail=f"Category with ID {category_id} not found")
 
-        # if category_name_normalized == "others":
-        #     query = query.filter(~func.lower(ProductCategory.name).in_(categories_lower))
-        # else:
-        query = query.filter(func.lower(ProductCategory.name) == category_name_normalized)
+        # Get products for this category
+        query = db.query(Product).filter(
+            Product.category_id == category_id
+        ).options(joinedload(Product.category))
 
         return query.offset(offset).limit(limit).all()
     

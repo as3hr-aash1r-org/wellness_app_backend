@@ -17,7 +17,7 @@ def create_entry(entry: DXNDirectoryCreate, db: Session = Depends(get_db)):
 @router.get("/", response_model=APIResponse[List[DXNDirectoryOut]])
 def list_entries(
     current_page: int = Query(1, ge=1, description="Current page number"),
-    limit: int = Query(50, ge=1, le=100),
+    limit: int = Query(25, ge=1, le=25),
     search: Optional[str] = Query(None),
     country: Optional[str] = Query(None),
     city: Optional[str] = Query(None),

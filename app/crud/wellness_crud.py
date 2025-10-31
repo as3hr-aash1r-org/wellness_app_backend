@@ -35,12 +35,24 @@ class CRUDWellness:
         ).offset(skip).limit(limit).order_by(Wellness.created_at.desc())
         result = db.execute(query)
         return result.scalars().all()
+    
+    def count_wellness_by_type(self, db: Session, *, wellness_type: WellnessType) -> int:
+        """Count wellness activities by type"""
+        query = select(func.count(Wellness.id)).where(Wellness.type == wellness_type)
+        result = db.execute(query)
+        return result.scalar()
 
     def get_all_wellness(self, db: Session, *, skip: int = 0, limit: int = 100) -> List[Wellness]:
         """Get all wellness activities with pagination"""
         query = select(Wellness).offset(skip).limit(limit).order_by(Wellness.created_at.desc())
         result = db.execute(query)
         return result.scalars().all()
+    
+    def count_all_wellness(self, db: Session) -> int:
+        """Count all wellness activities"""
+        query = select(func.count(Wellness.id))
+        result = db.execute(query)
+        return result.scalar()
 
     def update_wellness(self, db: Session, *, wellness_id: int, obj_in: WellnessUpdate) -> Wellness:
         """Update a wellness activity (Admin only)"""
@@ -107,6 +119,19 @@ class CRUDWellness:
         search_query = search_query.offset(skip).limit(limit).order_by(Wellness.created_at.desc())
         result = db.execute(search_query)
         return result.scalars().all()
+    
+    def count_search_wellness(self, db: Session, *, query: str, wellness_type: Optional[WellnessType] = None) -> int:
+        """Count search results for wellness activities"""
+        search_query = select(func.count(Wellness.id)).where(
+            Wellness.title.ilike(f"%{query}%") | 
+            Wellness.benefits.ilike(f"%{query}%")
+        )
+        
+        if wellness_type:
+            search_query = search_query.where(Wellness.type == wellness_type)
+            
+        result = db.execute(search_query)
+        return result.scalar()
 
 
 # Create a global instance

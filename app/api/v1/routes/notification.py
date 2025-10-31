@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from app.database.session import get_db
 from app.schemas.notification_schema import NotificationCreate, NotificationOut, BroadcastNotificationRequest
@@ -11,6 +11,7 @@ from app.services.firebase_service import firebase_notification_service
 from app.crud.user_crud import user_crud
 from typing import Optional
 import json
+import math
 
 router = APIRouter(prefix="/notifications", tags=["Notifications"])
 
@@ -65,17 +66,29 @@ def create_notification(notification: NotificationCreate, db: Session = Depends(
 
 @router.get("/me", response_model=APIResponse[list[NotificationOut]])
 def get_my_notifications(
+    current_page: int = Query(1, ge=1, description="Current page number"),
+    limit: int = Query(25, ge=1, le=25),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    items = notification_crud.get_all_for_user(db,current_user.id)
-    return success_response(items, "Your notifications fetched successfully")
+    skip = (current_page - 1) * limit
+    items = notification_crud.get_all_for_user(db, current_user.id, skip=skip, limit=limit)
+    total_items = notification_crud.count_for_user(db, current_user.id)
+    total_pages = math.ceil(total_items / limit) if limit else 1
+    return success_response(items, "Your notifications fetched successfully", total_pages=total_pages)
 
 
 @router.get("/", response_model=APIResponse[list[NotificationOut]])
-def get_all_notifications(db: Session = Depends(get_db)):
-    items = notification_crud.get_all(db)
-    return success_response(items, "Notifications fetched successfully")
+def get_all_notifications(
+    current_page: int = Query(1, ge=1, description="Current page number"),
+    limit: int = Query(25, ge=1, le=25),
+    db: Session = Depends(get_db)
+):
+    skip = (current_page - 1) * limit
+    items = notification_crud.get_all(db, skip=skip, limit=limit)
+    total_items = notification_crud.count_all(db)
+    total_pages = math.ceil(total_items / limit) if limit else 1
+    return success_response(items, "Notifications fetched successfully", total_pages=total_pages)
 
 @router.get("/{notification_id}", response_model=APIResponse[NotificationOut])
 def get_notification(notification_id: int, db: Session = Depends(get_db)):

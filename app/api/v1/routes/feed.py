@@ -65,7 +65,7 @@ def get_all_feeds(
     type: Optional[str] = Query(None, description="Filter by type"),
     category_id: Optional[int] = Query(None, description="Filter by category ID"),
     search: Optional[str] = None,
-    limit: int = Query(50, ge=1, le=100, description="Number of items to return"),
+    limit: int = Query(25, ge=1, le=25, description="Number of items to return"),
     current_page: int = Query(1, ge=1, description="Current page number"),
 ):
     offset = (current_page - 1) * limit
@@ -81,7 +81,7 @@ def get_all_feeds(
 @router.get("/featured", response_model=APIResponse[list[FeedOut]])
 def get_featured_feeds(
     db: Session = Depends(get_db),
-    limit: int = Query(10, ge=1, le=50, description="Number of featured items to return")
+    limit: int = Query(10, ge=1, le=25, description="Number of featured items to return")
 ):
     items = feed_crud.get_featured(db, limit=limit)
     return success_response(items, "Featured feed items fetched successfully")

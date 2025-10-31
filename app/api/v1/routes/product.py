@@ -43,7 +43,8 @@ def create_product(
 def get_all_products(
     current_page: int = Query(1, ge=1, description="Current page number"),
     limit: int = Query(100, ge=1, le=100),
-    category_name: Optional[str] = Query(None),
+    category_id: Optional[int] = Query(None, description="Filter by category ID"),
+    category_name: Optional[str] = Query(None, description="Filter by category name (deprecated, use category_id)"),
     search: Optional[str] = Query(None),
     db: Session = Depends(get_db)
 ):
@@ -51,13 +52,17 @@ def get_all_products(
     try:
         offset = (current_page - 1) * limit
         if search:
-            products = product_crud.search_products(db=db, query=search,skip=offset, limit=limit)
+            products = product_crud.search_products(db=db, query=search, skip=offset, limit=limit)
             total_items = product_crud.search_count(db=db, query=search)
+        elif category_id:
+            products = product_crud.get_by_category_id(db=db, category_id=category_id, offset=offset, limit=limit)
+            total_items = product_crud.count_all(db=db, category_id=category_id)
         elif category_name:
-            products = product_crud.get_by_category(db=db, category_name=category_name, offset=offset, limit=limit)
-            print(products,"products")
-            print(category_name,"category_name")
-            total_items = product_crud.count_all(db=db, category_name=category_name)
+            # Backward compatibility - URL decode and clean the category name
+            from urllib.parse import unquote
+            decoded_category_name = unquote(category_name).strip()
+            products = product_crud.get_by_category(db=db, category_name=decoded_category_name, offset=offset, limit=limit)
+            total_items = product_crud.count_all(db=db, category_name=decoded_category_name)
         else:
             products = product_crud.get_all(db=db, skip=offset, limit=limit)
             total_items = product_crud.count_all(db=db)

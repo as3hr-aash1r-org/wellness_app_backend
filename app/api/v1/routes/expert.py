@@ -9,6 +9,7 @@ from app.models.user import UserRole, User
 from app.crud.user_crud import user_crud
 from app.schemas.api_response import success_response, APIResponse
 from app.schemas.user_schema import ExpertCreate, ExpertRead, ExpertUpdate
+import math
 
 router = APIRouter(prefix="/experts", tags=["Experts"])
 
@@ -37,14 +38,20 @@ def create_expert(
 @router.get("/", response_model=APIResponse[List[ExpertRead]])
 @standardize_response
 def get_all_experts(
+    current_page: int = Query(1, ge=1, description="Current page number"),
+    limit: int = Query(25, ge=1, le=25),
     db: Session = Depends(get_db),
     current_user: User = Depends(check_user_permissions(UserRole.admin))
 ):
     """Get all experts - Admin only"""
-    experts = user_crud.get_all_experts(db=db)
+    skip = (current_page - 1) * limit
+    experts = user_crud.get_all_experts(db=db, skip=skip, limit=limit)
+    total_items = user_crud.count_all_experts(db=db)
+    total_pages = math.ceil(total_items / limit) if limit else 1
     return success_response(
         data=[ExpertRead.model_validate(expert) for expert in experts],
-        message="Experts fetched successfully"
+        message="Experts fetched successfully",
+        total_pages=total_pages
     )
 
 
@@ -113,6 +120,8 @@ def search_experts(
     q: Optional[str] = Query(None, description="Search query for expert name, phone, or email"),
     country: Optional[str] = Query(None, description="Filter by country"),
     position: Optional[str] = Query(None, description="Filter by position"),
+    current_page: int = Query(1, ge=1, description="Current page number"),
+    limit: int = Query(25, ge=1, le=25),
     db: Session = Depends(get_db),
     current_user: User = Depends(check_user_permissions(UserRole.admin))
 ):
@@ -137,7 +146,14 @@ def search_experts(
     if position:
         experts = [e for e in experts if e.position and e.position.lower() == position.lower()]
     
+    # Apply pagination
+    total_items = len(experts)
+    skip = (current_page - 1) * limit
+    experts = experts[skip:skip + limit]
+    total_pages = math.ceil(total_items / limit) if limit else 1
+    
     return success_response(
         data=[ExpertRead.model_validate(expert) for expert in experts],
-        message="Experts search results"
+        message="Experts search results",
+        total_pages=total_pages
     )

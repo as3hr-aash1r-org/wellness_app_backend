@@ -11,6 +11,7 @@ from app.dependencies.auth_dependency import get_current_user, check_user_permis
 from app.models.user import User, UserRole
 from app.schemas.api_response import success_response, APIResponse
 from app.schemas.chat_schema import ChatRoomCreate, MessageCreate, ChatRoomRead, MessageRead, ChatRoomWithUser, ChatRoomWithMessages, MessageWithDetails
+import math
 
 router = APIRouter(prefix="/chat", tags=["Chat"])
 
@@ -103,11 +104,19 @@ def get_my_chat_room(*, db: Session = Depends(get_db), current_user: User = Depe
     )
 
 
-@router.get("/rooms/expert", response_model=List[ChatRoomWithUser])
+@router.get("/rooms/expert", response_model=APIResponse[List[ChatRoomWithUser]])
 @standardize_response
-def my_chat_rooms(*, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def my_chat_rooms(
+    current_page: int = Query(1, ge=1, description="Current page number"),
+    limit: int = Query(25, ge=1, le=50),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     """Get all chat rooms assigned to the current expert with user details"""
-    chat_rooms = chat_room_crud.get_expert_chat_rooms(db, expert_id=current_user.id)
+    skip = (current_page - 1) * limit
+    chat_rooms = chat_room_crud.get_expert_chat_rooms(db, expert_id=current_user.id, skip=skip, limit=limit)
+    total_items = chat_room_crud.count_expert_chat_rooms(db, expert_id=current_user.id)
+    total_pages = math.ceil(total_items / limit) if limit else 1
     
     response_rooms = []
     for room in chat_rooms:
@@ -117,7 +126,8 @@ def my_chat_rooms(*, db: Session = Depends(get_db), current_user: User = Depends
     
     return success_response(
         data=response_rooms,
-        message="Chat rooms retrieved successfully"
+        message="Chat rooms retrieved successfully",
+        total_pages=total_pages
     )
 
 @router.get("/rooms/{room_id}", response_model=APIResponse[ChatRoomWithMessages])
@@ -125,10 +135,12 @@ def my_chat_rooms(*, db: Session = Depends(get_db), current_user: User = Depends
 def get_chat_room(
     *,
     room_id: int = Path(...),
+    current_page: int = Query(1, ge=1, description="Current page number for messages"),
+    limit: int = Query(10, ge=1, le=100, description="Number of messages per page"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Get a chat room with its messages"""
+    """Get a chat room with its messages (paginated)"""
     chat_room = chat_room_crud.get_chat_room_with_messages(db, room_id=room_id)
     
     if not chat_room:
@@ -144,34 +156,44 @@ def get_chat_room(
     # Mark messages as read
     message_crud.mark_messages_as_read(db, room_id=room_id, user_id=current_user.id)
     
-    # Get messages with product/office details
-    messages_with_details = message_crud.get_messages_with_details(db, room_id=room_id)
+    # Get paginated messages with product/office details
+    skip = (current_page - 1) * limit
+    messages_with_details = message_crud.get_messages_with_details(db, room_id=room_id, skip=skip, limit=limit)
+    total_messages = message_crud.count_messages_in_room(db, room_id=room_id)
+    total_pages = math.ceil(total_messages / limit) if limit else 1
     
-    # Replace the messages in chat_room with detailed messages
+    # Replace the messages in chat_room with paginated detailed messages
     chat_room.messages = messages_with_details
     
     return success_response(
         data=chat_room,
-        message="Chat room retrieved successfully"
+        message="Chat room retrieved successfully",
+        total_pages=total_pages
     )
 
 
 @router.get("/rooms", response_model=APIResponse[List[ChatRoomRead]])
 @standardize_response
 def get_chat_rooms(
-    *,
+    current_page: int = Query(1, ge=1, description="Current page number"),
+    limit: int = Query(25, ge=1, le=25),
     db: Session = Depends(get_db),
     current_user: User = Depends(check_user_permissions(UserRole.admin, UserRole.expert))
 ):
     """Get all chat rooms (admin) or assigned chat rooms (expert)"""
+    skip = (current_page - 1) * limit
     if current_user.role == UserRole.admin:
-        chat_rooms = chat_room_crud.get_all_active_chat_rooms(db)
+        chat_rooms = chat_room_crud.get_all_active_chat_rooms(db, skip=skip, limit=limit)
+        total_items = chat_room_crud.count_all_active_chat_rooms(db)
     else:  # Expert
-        chat_rooms = chat_room_crud.get_expert_chat_rooms(db, expert_id=current_user.id)
+        chat_rooms = chat_room_crud.get_expert_chat_rooms(db, expert_id=current_user.id, skip=skip, limit=limit)
+        total_items = chat_room_crud.count_expert_chat_rooms(db, expert_id=current_user.id)
     
+    total_pages = math.ceil(total_items / limit) if limit else 1
     return success_response(
         data=chat_rooms,
-        message="Chat rooms retrieved successfully"
+        message="Chat rooms retrieved successfully",
+        total_pages=total_pages
     )
 
 

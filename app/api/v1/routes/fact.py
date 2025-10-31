@@ -10,6 +10,7 @@ from app.models.fact import FactType
 from app.crud.fact_crud import fact_crud
 from app.schemas.api_response import success_response, APIResponse
 from app.schemas.fact_schema import FactCreate, FactUpdate, FactRead
+import math
 
 
 router = APIRouter(prefix="/facts", tags=["Facts"])
@@ -38,15 +39,19 @@ def create_fact(
 @router.get("/", response_model=APIResponse[List[FactRead]])
 @standardize_response
 def get_all_facts(
-    db: Session = Depends(get_db),
-    skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=100)
+    current_page: int = Query(1, ge=1, description="Current page number"),
+    limit: int = Query(100, ge=1, le=100),
+    db: Session = Depends(get_db)
 ):
     """Get all facts with pagination"""
+    skip = (current_page - 1) * limit
     facts = fact_crud.get_all_facts(db=db, skip=skip, limit=limit)
+    total_items = fact_crud.count_all_facts(db=db)
+    total_pages = math.ceil(total_items / limit) if limit else 1
     return success_response(
         data=facts,
-        message="Facts retrieved successfully"
+        message="Facts retrieved successfully",
+        total_pages=total_pages
     )
 
 
@@ -54,15 +59,19 @@ def get_all_facts(
 @standardize_response
 def get_facts_by_type(
     fact_type: FactType,
-    db: Session = Depends(get_db),
-    skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=100)
+    current_page: int = Query(1, ge=1, description="Current page number"),
+    limit: int = Query(100, ge=1, le=100),
+    db: Session = Depends(get_db)
 ):
     """Get all facts by type (gut, nutrition, sleep) with pagination"""
+    skip = (current_page - 1) * limit
     facts = fact_crud.get_facts_by_type(db=db, fact_type=fact_type, skip=skip, limit=limit)
+    total_items = fact_crud.count_facts_by_type(db=db, fact_type=fact_type)
+    total_pages = math.ceil(total_items / limit) if limit else 1
     return success_response(
         data=facts,
-        message=f"{fact_type.value.title()} facts retrieved successfully"
+        message=f"{fact_type.value.title()} facts retrieved successfully",
+        total_pages=total_pages
     )
 
 

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from app.database.session import get_db
 from app.schemas.api_response import success_response, APIResponse
@@ -8,6 +8,7 @@ from pydantic import BaseModel, field_validator
 from app.dependencies.auth_dependency import check_user_permissions
 from app.models.user import UserRole, User
 from app.core.decorators import standardize_response
+import math
 
 router = APIRouter(prefix="/categories",tags=["Categories"])
 
@@ -34,9 +35,16 @@ def create_category(category: CategoryCreate, db: Session = Depends(get_db)):
 
 
 @router.get("/", response_model=APIResponse[list[CategoryOut]])
-def list_categories(db: Session = Depends(get_db)):
-    categories = db.query(ProductCategory).all()
-    return success_response(categories, "Categories fetched successfully")
+def list_categories(
+    current_page: int = Query(1, ge=1, description="Current page number"),
+    limit: int = Query(25, ge=1, le=25),
+    db: Session = Depends(get_db)
+):
+    skip = (current_page - 1) * limit
+    categories = db.query(ProductCategory).offset(skip).limit(limit).all()
+    total_items = db.query(ProductCategory).count()
+    total_pages = math.ceil(total_items / limit) if limit else 1
+    return success_response(categories, "Categories fetched successfully", total_pages=total_pages)
 
 @router.get("/{category_id}", response_model=APIResponse[CategoryOut])
 def get_category(category_id: int, db: Session = Depends(get_db)):

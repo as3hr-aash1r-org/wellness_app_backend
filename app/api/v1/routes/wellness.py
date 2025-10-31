@@ -12,6 +12,7 @@ from app.schemas.api_response import success_response, APIResponse
 from app.schemas.wellness_schema import (
     WellnessCreate, WellnessUpdate, WellnessRead, WellnessStatsResponse
 )
+import math
 
 router = APIRouter(prefix="/wellness", tags=["Wellness"])
 
@@ -40,15 +41,19 @@ def create_wellness(
 @router.get("/", response_model=APIResponse[List[WellnessRead]])
 @standardize_response
 def get_all_wellness(
-    db: Session = Depends(get_db),
-    skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=100)
+    current_page: int = Query(1, ge=1, description="Current page number"),
+    limit: int = Query(100, ge=1, le=100),
+    db: Session = Depends(get_db)
 ):
     """Get all wellness activities with pagination"""
+    skip = (current_page - 1) * limit
     wellness_list = wellness_crud.get_all_wellness(db=db, skip=skip, limit=limit)
+    total_items = wellness_crud.count_all_wellness(db=db)
+    total_pages = math.ceil(total_items / limit) if limit else 1
     return success_response(
         data=wellness_list,
-        message="Wellness activities retrieved successfully"
+        message="Wellness activities retrieved successfully",
+        total_pages=total_pages
     )
 
 
@@ -56,17 +61,21 @@ def get_all_wellness(
 @standardize_response
 def get_wellness_by_type(
     wellness_type: WellnessType,
-    db: Session = Depends(get_db),
-    skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=100)
+    current_page: int = Query(1, ge=1, description="Current page number"),
+    limit: int = Query(100, ge=1, le=100),
+    db: Session = Depends(get_db)
 ):
     """Get all wellness activities by type (exercise, therapy, stress)"""
+    skip = (current_page - 1) * limit
     wellness_list = wellness_crud.get_wellness_by_type(
         db=db, wellness_type=wellness_type, skip=skip, limit=limit
     )
+    total_items = wellness_crud.count_wellness_by_type(db=db, wellness_type=wellness_type)
+    total_pages = math.ceil(total_items / limit) if limit else 1
     return success_response(
         data=wellness_list,
-        message=f"{wellness_type.value.title()} activities retrieved successfully"
+        message=f"{wellness_type.value.title()} activities retrieved successfully",
+        total_pages=total_pages
     )
 
 
@@ -75,17 +84,21 @@ def get_wellness_by_type(
 def search_wellness(
     q: str = Query(..., min_length=1, description="Search query"),
     wellness_type: Optional[WellnessType] = Query(None),
-    db: Session = Depends(get_db),
-    skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=100)
+    current_page: int = Query(1, ge=1, description="Current page number"),
+    limit: int = Query(100, ge=1, le=100),
+    db: Session = Depends(get_db)
 ):
     """Search wellness activities by title or benefits"""
+    skip = (current_page - 1) * limit
     wellness_list = wellness_crud.search_wellness(
         db=db, query=q, wellness_type=wellness_type, skip=skip, limit=limit
     )
+    total_items = wellness_crud.count_search_wellness(db=db, query=q, wellness_type=wellness_type)
+    total_pages = math.ceil(total_items / limit) if limit else 1
     return success_response(
         data=wellness_list,
-        message=f"Search results for '{q}' retrieved successfully"
+        message=f"Search results for '{q}' retrieved successfully",
+        total_pages=total_pages
     )
 
 

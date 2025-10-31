@@ -88,10 +88,16 @@ class CRUDUser:
         # print(result)
         return result.scalar_one_or_none()
 
-    def get_all_users(self, db: Session):
-        query = select(User).order_by(User.id)
+    def get_all_users(self, db: Session, skip: int = 0, limit: int = 100):
+        query = select(User).order_by(User.id).offset(skip).limit(limit)
         result = db.execute(query)
         return result.scalars().all()
+    
+    def count_all_users(self, db: Session):
+        from sqlalchemy import func
+        query = select(func.count(User.id))
+        result = db.execute(query)
+        return result.scalar()
 
     def delete_user(self, db: Session, *, user_id: int):
         query = select(User).where(User.id == user_id)
@@ -187,10 +193,16 @@ class CRUDUser:
         db.refresh(db_obj)
         return db_obj
 
-    def get_all_experts(self, db: Session):
-        query = select(User).where(User.role == UserRole.expert).order_by(User.id)
+    def get_all_experts(self, db: Session, skip: int = 0, limit: int = 100):
+        query = select(User).where(User.role == UserRole.expert).order_by(User.id).offset(skip).limit(limit)
         result = db.execute(query)
         return result.scalars().all()
+    
+    def count_all_experts(self, db: Session):
+        from sqlalchemy import func
+        query = select(func.count(User.id)).where(User.role == UserRole.expert)
+        result = db.execute(query)
+        return result.scalar()
 
     def get_expert_by_id(self, db: Session, *, expert_id: int):
         query = select(User).where(User.id == expert_id, User.role == UserRole.expert)

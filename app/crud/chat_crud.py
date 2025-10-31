@@ -69,7 +69,7 @@ class CRUDChatRoom:
         result = db.execute(query)
         return result.scalar_one_or_none()
     
-    def get_expert_chat_rooms(self, db: Session, *, expert_id: int) -> List[ChatRoom]:
+    def get_expert_chat_rooms(self, db: Session, *, expert_id: int, skip: int = 0, limit: int = 100) -> List[ChatRoom]:
         """Get all chat rooms assigned to an expert with user relationship loaded"""
         query = select(ChatRoom).where(
             and_(
@@ -78,16 +78,33 @@ class CRUDChatRoom:
             )
         ).options(
             joinedload(ChatRoom.user)  # Eager load the user relationship
-        ).order_by(desc(ChatRoom.updated_at))
+        ).order_by(desc(ChatRoom.updated_at)).offset(skip).limit(limit)
         
         result = db.execute(query).unique()
         return list(result.scalars().all())
     
-    def get_all_active_chat_rooms(self, db: Session) -> List[ChatRoom]:
+    def count_expert_chat_rooms(self, db: Session, *, expert_id: int) -> int:
+        """Count chat rooms assigned to an expert"""
+        query = select(func.count(ChatRoom.id)).where(
+            and_(
+                ChatRoom.expert_id == expert_id,
+                ChatRoom.is_active == True
+            )
+        )
+        result = db.execute(query)
+        return result.scalar()
+    
+    def get_all_active_chat_rooms(self, db: Session, skip: int = 0, limit: int = 100) -> List[ChatRoom]:
         """Get all active chat rooms (for admin)"""
-        query = select(ChatRoom).where(ChatRoom.is_active == True).order_by(desc(ChatRoom.updated_at))
+        query = select(ChatRoom).where(ChatRoom.is_active == True).order_by(desc(ChatRoom.updated_at)).offset(skip).limit(limit)
         result = db.execute(query)
         return list(result.scalars().all())
+    
+    def count_all_active_chat_rooms(self, db: Session) -> int:
+        """Count all active chat rooms"""
+        query = select(func.count(ChatRoom.id)).where(ChatRoom.is_active == True)
+        result = db.execute(query)
+        return result.scalar()
     
     def assign_expert(self, db: Session, *, room_id: int, expert_id: int) -> ChatRoom:
         """Assign an expert to a chat room"""
@@ -167,7 +184,7 @@ class CRUDMessage:
         result = db.execute(query)
         return list(result.scalars().all())
     
-    def get_messages_with_details(self, db: Session, *, room_id: int, limit: int = 50, offset: int = 0) -> List[Message]:
+    def get_messages_with_details(self, db: Session, *, room_id: int, skip: int = 0, limit: int = 50) -> List[Message]:
         """Get messages for a chat room with product/office details included"""
         query = (
             select(Message)
@@ -177,11 +194,17 @@ class CRUDMessage:
             )
             .where(Message.room_id == room_id)
             .order_by(desc(Message.created_at))
-            .offset(offset)
+            .offset(skip)
             .limit(limit)
         )
         result = db.execute(query)
         return list(result.scalars().all())
+    
+    def count_messages_in_room(self, db: Session, *, room_id: int) -> int:
+        """Count total messages in a chat room"""
+        query = select(func.count(Message.id)).where(Message.room_id == room_id)
+        result = db.execute(query)
+        return result.scalar()
     
     def mark_messages_as_read(self, db: Session, *, room_id: int, user_id: int) -> int:
         """Mark all messages in a chat room as read for a user"""
