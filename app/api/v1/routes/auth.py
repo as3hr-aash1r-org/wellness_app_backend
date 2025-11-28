@@ -23,6 +23,7 @@ router = APIRouter(prefix="/auth", tags=["Auth"])
 @router.post("/register", response_model=APIResponse[LoginResponse])
 @standardize_response
 def register_user(*, db: Session = Depends(get_db), user_in: UserCreate):
+    print("Incoming request:", user_in.model_dump())
     user_exists = user_crud.get_by_phone(db, phone_number=user_in.phone_number)
     if user_exists:
         raise HTTPException(status_code=400, detail="Phone Number already exists")
