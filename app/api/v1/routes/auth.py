@@ -27,7 +27,7 @@ def register_user(*, db: Session = Depends(get_db), user_in: UserCreate):
     user_exists = user_crud.get_by_phone(db, phone_number=user_in.phone_number)
     if user_exists:
         raise HTTPException(status_code=400, detail="Phone Number already exists")
-    print(user_in.role)
+    print("Incoming request",user_in)
     if user_in.role == UserRole.official:
         missing_fields = []
         if not user_in.sponsor_name:

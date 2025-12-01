@@ -1,29 +1,89 @@
 from typing import Optional, Any, ClassVar, Literal
 from pydantic import BaseModel, EmailStr, field_validator
+from pydantic import BaseModel, EmailStr, field_validator, model_validator
 from app.models.user import UserRole
 from datetime import datetime, date
 
-
 class UserBase(BaseModel):
     username: str
-
-
 class UserCreate(UserBase):
     phone_number: str
     role: UserRole
     sponsor_code: Optional[str] = None
     distributor_code: Optional[str] = None
     sponsor_name: Optional[str] = None
-    country: Optional[str] = None
-    country_code: Optional[str] = None
+    country: str  # Required: Country name sent from frontend
+    country_code: str  # Required: Country code sent from frontend
+    country_code: str  # Required: 2-letter ISO Country code (e.g. PK, US)
+    phone_code: str # Required: International dialing code (e.g. +92)
     referral_code: Optional[str] = None  # Optional referral code for signup
-
+    
+    @field_validator('country')
+    @classmethod
+    def validate_country(cls, v):
+        if not v or not v.strip():
+            raise ValueError('Country is required')
+        if len(v.strip()) < 2:
+            raise ValueError('Country name must be at least 2 characters')
+        if len(v.strip()) > 100:
+            raise ValueError('Country name cannot exceed 100 characters')
+        return v.strip()
+    
+    @field_validator('country_code')
+    @classmethod
+    def validate_country_code(cls, v):
+        if not v or not v.strip():
+            raise ValueError('Country code is required')
+        # Basic validation for country code format (+XX or +XXX)
+        
+        cleaned = v.strip()
+        
+        # Strict validation: Must be 2-letter ISO code (e.g., PK, US)
+        if len(cleaned) == 2 and cleaned.isalpha() and cleaned.isupper():
+            return cleaned
+            
+        raise ValueError('Country code must be a 2-letter ISO code (e.g., PK, US)')
+    @field_validator('phone_code')
+    @classmethod
+    def validate_phone_code(cls, v):
+        if not v or not v.strip():
+            raise ValueError('Phone code is required')
+            
+        cleaned = v.strip()
+        if not cleaned.startswith('+'):
+            raise ValueError('Country code must start with +')
+        if len(cleaned) < 2 or len(cleaned) > 5:
+            raise ValueError('Country code must be between 2-5 characters (including +)')
+            raise ValueError('Phone code must start with +')
+            
+        if len(cleaned) < 2 or len(cleaned) > 6:
+            raise ValueError('Phone code must be between 2-6 characters (including +)')
+            
+        if not cleaned[1:].isdigit():
+            raise ValueError('Country code must contain only digits after +')
+            raise ValueError('Phone code must contain only digits after +')
+            
+        return cleaned
+    @model_validator(mode='after')
+    def validate_country_consistency(self):
+        from app.utils.country_utils import CountryValidator
+        
+        try:
+            CountryValidator.validate_consistency(
+                country_name=self.country,
+                country_code=self.country_code,
+                phone_code=self.phone_code,
+                phone_number=self.phone_number
+            )
+        except ValueError as e:
+            raise ValueError(str(e))
+            
+        return self
     # @field_validator("role")
     # def normalize_role(cls, v):
     #     if isinstance(v, str):
     #         v = v.upper()
     #     return v
-
     # @field_validator("role")
     # @classmethod
     # def validate_official_fields(cls,v:Any,info):
@@ -35,12 +95,8 @@ class UserCreate(UserBase):
     #             raise ValueError(f"Missing required fields for dxn member: {', '.join(missing_fields)}")
     #     return v
     
-
-
 class UserLogin(BaseModel):
     phone_number: str
-
-
 class UserRead(BaseModel):
     id: int
     phone_number: Optional[str]
@@ -61,14 +117,10 @@ class UserRead(BaseModel):
     sponsor_rank: Optional[str]
     email: Optional[str]
     gender: Optional[str]
-
     class Config:
         from_attributes = True
-
 class UpdateProfilePictureRequest(BaseModel):
     image_url: str
-
-
 class ProfileUpdateRequest(BaseModel):
     """Profile update request - only editable fields"""
     # Profile section - only username is editable
@@ -126,26 +178,18 @@ class ProfileUpdateRequest(BaseModel):
                 raise ValueError('Sponsor code cannot exceed 20 characters')
             return v.strip() if v.strip() else None
         return v
-
 class AdminRead(BaseModel):
     id: int
     email: EmailStr
     role: UserRole
     created_at: datetime
     updated_at: Optional[datetime]
-
     class Config:
         from_attributes = True
-
-
 class UserAll(UserRead):
     pass
-
-
 class FCMTokenUpdate(BaseModel):
     fcm_token: str
-
-
 class UserUpdate(BaseModel):
     username: Optional[str] = None
     phone_number: Optional[str] = None
@@ -155,8 +199,6 @@ class UserUpdate(BaseModel):
     sponsor_code: Optional[str] = None
     distributor_code: Optional[str] = None
     fcm_token: Optional[str] = None
-
-
 # Expert-specific schemas
 class ExpertCreate(BaseModel):
     first_name: str
@@ -170,7 +212,6 @@ class ExpertCreate(BaseModel):
     position: Optional[str] = None
     country: Optional[str] = None
     dxn_distributor_number: Optional[str] = None
-
     @field_validator('phone_number')
     @classmethod
     def validate_phone_number(cls, v: str) -> str:
@@ -178,8 +219,6 @@ class ExpertCreate(BaseModel):
         if not v or len(v.strip()) < 10:
             raise ValueError('Phone number must be at least 10 characters')
         return v.strip()
-
-
 class ExpertRead(BaseModel):
     id: int
     first_name: Optional[str]
@@ -196,11 +235,8 @@ class ExpertRead(BaseModel):
     created_at: datetime
     updated_at: Optional[datetime]
     image_url: Optional[str]
-
     class Config:
         from_attributes = True
-
-
 class ExpertUpdate(BaseModel):
     first_name: Optional[str] = None
     middle_name: Optional[str] = None

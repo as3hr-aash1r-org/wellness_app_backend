@@ -9,126 +9,6 @@ class ReferralCodeGenerator:
     Pattern: Country Code + 3 letters + 3 digits
     """
     
-    # Country to prefix mapping
-    COUNTRY_PREFIX_MAP = {
-        "Pakistan": "PK",
-        "United States": "US", 
-        "United Kingdom": "UK",
-        "Canada": "CA",
-        "Australia": "AU",
-        "India": "IN",
-        "Bangladesh": "BD",
-        "Saudi Arabia": "SA",
-        "United Arab Emirates": "AE",
-        "Malaysia": "MY",
-        "Singapore": "SG",
-        "Indonesia": "ID",
-        "Turkey": "TR",
-        "Germany": "DE",
-        "France": "FR",
-        "Italy": "IT",
-        "Spain": "ES",
-        "Netherlands": "NL",
-        "Sweden": "SE",
-        "Norway": "NO",
-        "Denmark": "DK",
-        "Finland": "FI",
-        "Switzerland": "CH",
-        "Austria": "AT",
-        "Belgium": "BE",
-        "Ireland": "IE",
-        "Portugal": "PT",
-        "Greece": "GR",
-        "Poland": "PL",
-        "Czech Republic": "CZ",
-        "Hungary": "HU",
-        "Romania": "RO",
-        "Bulgaria": "BG",
-        "Croatia": "HR",
-        "Slovenia": "SI",
-        "Slovakia": "SK",
-        "Estonia": "EE",
-        "Latvia": "LV",
-        "Lithuania": "LT",
-        "Japan": "JP",
-        "South Korea": "KR",
-        "China": "CN",
-        "Thailand": "TH",
-        "Vietnam": "VN",
-        "Philippines": "PH",
-        "Myanmar": "MM",
-        "Cambodia": "KH",
-        "Laos": "LA",
-        "Brunei": "BN",
-        "New Zealand": "NZ",
-        "South Africa": "ZA",
-        "Egypt": "EG",
-        "Morocco": "MA",
-        "Algeria": "DZ",
-        "Tunisia": "TN",
-        "Libya": "LY",
-        "Sudan": "SD",
-        "Ethiopia": "ET",
-        "Kenya": "KE",
-        "Uganda": "UG",
-        "Tanzania": "TZ",
-        "Ghana": "GH",
-        "Nigeria": "NG",
-        "Brazil": "BR",
-        "Argentina": "AR",
-        "Chile": "CL",
-        "Colombia": "CO",
-        "Peru": "PE",
-        "Venezuela": "VE",
-        "Ecuador": "EC",
-        "Uruguay": "UY",
-        "Paraguay": "PY",
-        "Bolivia": "BO",
-        "Mexico": "MX",
-        "Guatemala": "GT",
-        "Honduras": "HN",
-        "El Salvador": "SV",
-        "Nicaragua": "NI",
-        "Costa Rica": "CR",
-        "Panama": "PA",
-        "Cuba": "CU",
-        "Dominican Republic": "DO",
-        "Haiti": "HT",
-        "Jamaica": "JM",
-        "Trinidad and Tobago": "TT",
-        "Barbados": "BB",
-        "Bahamas": "BS",
-        "Belize": "BZ",
-        "Guyana": "GY",
-        "Suriname": "SR",
-        "French Guiana": "GF",
-        "Russia": "RU",
-        "Ukraine": "UA",
-        "Belarus": "BY",
-        "Moldova": "MD",
-        "Georgia": "GE",
-        "Armenia": "AM",
-        "Azerbaijan": "AZ",
-        "Kazakhstan": "KZ",
-        "Uzbekistan": "UZ",
-        "Turkmenistan": "TM",
-        "Tajikistan": "TJ",
-        "Kyrgyzstan": "KG",
-        "Afghanistan": "AF",
-        "Iran": "IR",
-        "Iraq": "IQ",
-        "Syria": "SY",
-        "Lebanon": "LB",
-        "Jordan": "JO",
-        "Israel": "IL",
-        "Palestine": "PS",
-        "Kuwait": "KW",
-        "Bahrain": "BH",
-        "Qatar": "QA",
-        "Oman": "OM",
-        "Yemen": "YE"
-    }
-    
     DEFAULT_PREFIX = "XX"  # Default for unknown countries
     LETTER_START = "AAA"
     NUMBER_START = "000"
@@ -165,24 +45,26 @@ class ReferralCodeGenerator:
     
     @classmethod
     def get_country_prefix(cls, country: str) -> str:
-        """Get the country prefix for referral code generation"""
-        if not country:
+        """
+        Get the country prefix for referral code generation.
+        Expects a 2-letter ISO code or a country name.
+        """
+        if not country or country == "Unknown":
             return cls.DEFAULT_PREFIX
         
-        # Try exact match first
-        if country in cls.COUNTRY_PREFIX_MAP:
-            return cls.COUNTRY_PREFIX_MAP[country]
-        
-        # Try case-insensitive match
-        for country_name, prefix in cls.COUNTRY_PREFIX_MAP.items():
-            if country.lower() == country_name.lower():
-                return prefix
-        
-        # Try partial match for cases like "United States of America"
-        country_lower = country.lower()
-        for country_name, prefix in cls.COUNTRY_PREFIX_MAP.items():
-            if country_name.lower() in country_lower or country_lower in country_name.lower():
-                return prefix
+        # If it's already a 2-letter code, return it
+        if len(country) == 2 and country.isalpha():
+            return country.upper()
+            
+        # If it's a full name, try to look it up (fallback)
+        # Note: We now enforce strict 2-letter codes in the schema, so this is just a safety net
+        try:
+            import pycountry
+            country_obj = pycountry.countries.lookup(country)
+            if country_obj:
+                return country_obj.alpha_2
+        except (ImportError, LookupError):
+            pass
         
         return cls.DEFAULT_PREFIX
 

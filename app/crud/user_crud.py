@@ -1,21 +1,22 @@
 from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-
 from app.core.security import get_hashed_password, verify_password
 from app.models.user import User,UserRole
 from app.schemas.auth_schema import AdminLogin
 from app.schemas.user_schema import UserCreate, ExpertCreate, ExpertUpdate, ProfileUpdateRequest
-from app.utils.country_helper import get_country_details
 from app.utils.referral_code_generator import generate_referral_code
-
+from app.utils.country_utils import CountryValidator
 
 class CRUDUser:
     def create_user(self, db: Session, *, obj_in: UserCreate):
-        country, country_code = get_country_details(obj_in.phone_number)
-
-        # Generate unique referral code for the new user with country-specific prefix
-        user_referral_code = generate_referral_code(db, country)
+        # Use country and country_code provided by frontend
+        country = obj_in.country.strip() if obj_in.country else "Unknown"
+        country_code = obj_in.country_code.strip() if obj_in.country_code else "XX"
+        
+        # Clean and validate country data from frontend
+        # Generate unique referral code using the strict 2-letter country code
+        user_referral_code = generate_referral_code(db, country_code)
         
         db_obj = User(
             username = obj_in.username,
@@ -32,7 +33,6 @@ class CRUDUser:
         db.commit()
         db.refresh(db_obj)
         return db_obj
-
     def authenticate_user(self, db: Session, *, phone_number: str):
         user = self.get_by_phone(db, phone_number=phone_number)
         if not user:
@@ -40,7 +40,6 @@ class CRUDUser:
         # if not verify_password(password, user.password_hash):
         #     return None
         return user
-
     def create_admin(self,db: Session, obj_in: AdminLogin):
         db_obj = User(
             email=obj_in.email,
@@ -51,7 +50,7 @@ class CRUDUser:
         db.commit()
         db.refresh(db_obj)
         return db_obj
-    
+
     def authenticate_admin(self,db: Session, username: str, password: str):
         print("Authenticating admin with email:", username)
         user = self.get_by_email(db, email=username)
@@ -69,36 +68,31 @@ class CRUDUser:
             return None
         print("Admin authentication successful")
         return user
-
     def get_by_email(self, db: Session, *, email: str):
         query = select(User).where(User.email == email)
         result = db.execute(query)
         return result.scalar_one_or_none()
-
     def get_by_phone(self, db: Session, *, phone_number: str,is_deleted: bool = False):
         query = select(User).where(User.phone_number == phone_number)
         if not is_deleted:
             query = query.where(User.is_deleted == False)
         result = db.execute(query)
         return result.scalar_one_or_none()
-
     def get_user_by_id(self, db: Session, *, user_id: int):
         query = select(User).where(User.id == user_id)
         result = db.execute(query)
         # print(result)
         return result.scalar_one_or_none()
-
     def get_all_users(self, db: Session, skip: int = 0, limit: int = 100):
         query = select(User).order_by(User.id).offset(skip).limit(limit)
         result = db.execute(query)
         return result.scalars().all()
-    
+
     def count_all_users(self, db: Session):
         from sqlalchemy import func
         query = select(func.count(User.id))
         result = db.execute(query)
         return result.scalar()
-
     def delete_user(self, db: Session, *, user_id: int):
         query = select(User).where(User.id == user_id)
         print(query)
@@ -107,7 +101,6 @@ class CRUDUser:
         if user is None:
             raise HTTPException(400, "User not found")
         return user
-
     def update_fcm_token(self, db: Session, *, user_id: int, fcm_token: str):
         user = self.get_user_by_id(db, user_id=user_id)
         if user is None:
@@ -129,7 +122,7 @@ class CRUDUser:
         db.commit()
         db.refresh(user)
         return user
-    
+
     def update_profile(self, db: Session, *, user_id: int, obj_in: ProfileUpdateRequest):
         """Update user profile with only editable fields"""
         user = self.get_user_by_id(db, user_id=user_id)
@@ -151,7 +144,6 @@ class CRUDUser:
         db.commit()
         db.refresh(user)
         return user
-
     # Expert-specific CRUD operations
     def create_expert(self, db: Session, *, obj_in: ExpertCreate):
         # Check if phone number already exists
@@ -165,11 +157,9 @@ class CRUDUser:
             if existing_email:
                 raise HTTPException(status_code=400, detail="Email already exists")
         
-        # Get country details from phone number
-        country, country_code = get_country_details(obj_in.phone_number)
-        if not obj_in.country:  # Use detected country if not provided
-            country = obj_in.country or country
-
+        # Use provided country or default values
+        country = obj_in.country if obj_in.country else "Unknown"
+        country_code = "+000"  # Default for experts, can be updated later
         # Create the expert user
         db_obj = User(
             first_name=obj_in.first_name,
@@ -182,7 +172,7 @@ class CRUDUser:
             date_of_birth=obj_in.date_of_birth,
             gender=obj_in.gender,
             position=obj_in.position,
-            country=obj_in.country or country,
+            country=country,
             country_code=country_code,
             dxn_distributor_number=obj_in.dxn_distributor_number,
             role=UserRole.expert
@@ -192,23 +182,20 @@ class CRUDUser:
         db.commit()
         db.refresh(db_obj)
         return db_obj
-
     def get_all_experts(self, db: Session, skip: int = 0, limit: int = 100):
         query = select(User).where(User.role == UserRole.expert).order_by(User.id).offset(skip).limit(limit)
         result = db.execute(query)
         return result.scalars().all()
-    
+
     def count_all_experts(self, db: Session):
         from sqlalchemy import func
         query = select(func.count(User.id)).where(User.role == UserRole.expert)
         result = db.execute(query)
         return result.scalar()
-
     def get_expert_by_id(self, db: Session, *, expert_id: int):
         query = select(User).where(User.id == expert_id, User.role == UserRole.expert)
         result = db.execute(query)
         return result.scalar_one_or_none()
-
     def update_expert(self, db: Session, *, expert_id: int, obj_in: ExpertUpdate):
         expert = self.get_expert_by_id(db, expert_id=expert_id)
         if expert is None:
@@ -241,7 +228,6 @@ class CRUDUser:
         db.commit()
         db.refresh(expert)
         return expert
-
     def delete_expert(self, db: Session, *, expert_id: int):
         expert = self.get_expert_by_id(db, expert_id=expert_id)
         if expert is None:
