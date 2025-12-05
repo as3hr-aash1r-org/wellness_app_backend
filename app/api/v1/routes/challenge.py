@@ -5,7 +5,7 @@ from typing import List, Optional
 
 from app.core.decorators import standardize_response
 from app.database.session import get_db
-from app.dependencies.auth_dependency import get_current_user
+from app.dependencies.auth_dependency import get_current_user, get_current_user_optional
 from app.models.user import User
 from app.models.challenge import ChallengeType, ChallengeStatus, UserChallenge
 from app.crud.challenge_crud import challenge_crud
@@ -123,7 +123,6 @@ def get_all_challenges(
         total_pages=total_pages
     )
 
-
 @router.get("/type/{challenge_type}", response_model=APIResponse[List[dict]])
 @standardize_response
 def get_challenges_by_type(
@@ -131,34 +130,36 @@ def get_challenges_by_type(
     current_page: int = Query(1, ge=1, description="Current page number"),
     limit: int = Query(100, ge=1, le=100),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: Optional[User] = Depends(get_current_user_optional)
 ):
-    """Get all active challenges by type with flattened response and user participation status"""
+    """Get all active challenges by type - Public API with optional user participation status"""
     # Get all active challenges of this type
     skip = (current_page - 1) * limit
     challenges = challenge_crud.get_challenges_by_type(db=db, challenge_type=challenge_type, skip=skip, limit=limit)
     total_items = challenge_crud.count_challenges_by_type(db=db, challenge_type=challenge_type)
     total_pages = math.ceil(total_items / limit) if limit else 1
     
-    # Get user's participation status for these challenges
-    challenge_ids = [c.id for c in challenges]
-    user_challenges = db.execute(
-        select(UserChallenge).where(
-            and_(UserChallenge.user_id == current_user.id, 
-                 UserChallenge.challenge_id.in_(challenge_ids))
-        )
-    ).scalars().all()
-    
-    # Create a mapping of challenge_id -> user_challenge
-    user_challenge_map = {uc.challenge_id: uc for uc in user_challenges}
+    # Get user's participation status for these challenges (only if user is authenticated)
+    user_challenge_map = {}
+    if current_user:
+        challenge_ids = [c.id for c in challenges]
+        user_challenges = db.execute(
+            select(UserChallenge).where(
+                and_(UserChallenge.user_id == current_user.id, 
+                     UserChallenge.challenge_id.in_(challenge_ids))
+            )
+        ).scalars().all()
+        
+        # Create a mapping of challenge_id -> user_challenge
+        user_challenge_map = {uc.challenge_id: uc for uc in user_challenges}
     
     # Create flattened response structure
     flattened_data = []
     for challenge in challenges:
-        user_challenge = user_challenge_map.get(challenge.id)
+        user_challenge = user_challenge_map.get(challenge.id) if current_user else None
         
         flattened_item = {
-            # Challenge basic info
+            # Challenge basic info (always available)
             "id": challenge.id,
             "title": challenge.title,
             "description": challenge.description,
@@ -173,7 +174,7 @@ def get_challenges_by_type(
             "duration_display_text": challenge.duration_display_text,
             "reward_display_text": challenge.reward_display_text,
             
-            # User progress info (if user has joined)
+            # User progress info (only if user is authenticated and has joined)
             "user_challenge_id": user_challenge.id if user_challenge else None,
             "status": user_challenge.status.value if user_challenge else "pending",
             "current_progress": user_challenge.current_progress if user_challenge else 0,
@@ -185,7 +186,10 @@ def get_challenges_by_type(
             "last_progress_date": user_challenge.last_progress_date.isoformat() if user_challenge and user_challenge.last_progress_date else None,
             "last_progress_hour": user_challenge.last_progress_hour if user_challenge else None,
             "is_completed": user_challenge.is_completed if user_challenge else False,
-            "is_user_active": user_challenge.is_active if user_challenge else False
+            "is_user_active": user_challenge.is_active if user_challenge else False,
+            
+            # Indicate if user data is available
+            "is_authenticated": current_user is not None
         }
         flattened_data.append(flattened_item)
     

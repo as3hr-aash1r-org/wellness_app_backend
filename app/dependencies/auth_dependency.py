@@ -1,5 +1,6 @@
-from fastapi import Depends, HTTPException
-from fastapi.security import OAuth2PasswordBearer
+from fastapi import Depends, HTTPException, Request
+from fastapi.security import OAuth2PasswordBearer, HTTPBearer, HTTPAuthorizationCredentials
+from typing import Optional
 from app.crud.user_crud import user_crud
 from app.database.session import get_db
 from app.core.settings import settings
@@ -8,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.models.user import User, UserRole
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/admin/login")
+optional_oauth2_scheme = HTTPBearer(auto_error=False)
 
 
 def get_current_user(db: Session = Depends(get_db), token: str = Depends(oauth2_scheme)):
@@ -50,3 +52,29 @@ def check_user_permissions(*allowed_roles: UserRole):
         return current_user
 
     return role_checker
+
+
+def get_current_user_optional(
+    db: Session = Depends(get_db), 
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(optional_oauth2_scheme)
+) -> Optional[User]:
+    """
+    Optional authentication - returns User if valid token provided, None if no token or invalid token
+    Used for public endpoints that can work with or without authentication
+    """
+    if not credentials:
+        return None
+    
+    try:
+        token = credentials.credentials
+        payload = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
+        user_id = payload.get("sub")
+        if user_id is None:
+            return None
+            
+        user = user_crud.get_user_by_id(db=db, user_id=user_id)
+        return user
+        
+    except (JWTError, Exception):
+        # Return None for any authentication errors instead of raising exception
+        return None
