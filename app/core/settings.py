@@ -9,6 +9,8 @@ class Settings(BaseSettings):
     secret_key: str
     algorithm: str
     access_token_expire_minutes: int
+    smsto_api_key: str
+    smsto_sender_id: str = "Wellness"
 
     class Config:
         env_file = ".env"

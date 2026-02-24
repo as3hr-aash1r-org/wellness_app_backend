@@ -11,22 +11,24 @@ from app.models.referrals import Referrals
 from app.models.user_rewards import UserReward
 from app.models.challenge import Challenge, UserChallenge
 from app.models.wellness import Wellness
+from app.models.otp import OTP
 
 __all__ = [
     "User",
     "ChatRoom", 
     "Message",
-    "DxnDirectory",
+    "DXNDirectory",
     "Fact",
     "FeedCategory",
     "FeedItem", 
-    "Notification",
-    "PasswordResetToken",
+    "Notifications",
+    "PasswordResetTokens",
     "ProductCategory",
     "Product",
     "Referrals",
     "UserReward",
     "Challenge",
     "UserChallenge",
-    "Wellness"
+    "Wellness",
+    "OTP"
 ]
