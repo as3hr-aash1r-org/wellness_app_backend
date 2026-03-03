@@ -13,6 +13,7 @@ class UserRole(str, Enum):
     expert = "expert"
     official = "official"
     guest = "guest"
+    influencer = "influencer"
 
 
 class User(Base):
