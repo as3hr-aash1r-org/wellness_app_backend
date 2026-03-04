@@ -1,7 +1,7 @@
-from datetime import datetime
+from datetime import datetime, date
 from enum import Enum
 
-from sqlalchemy import Integer, DateTime, Enum as SQLAEnum, Boolean, Text, ForeignKey
+from sqlalchemy import Integer, DateTime, Enum as SQLAEnum, Boolean, Text, ForeignKey, String, Date
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -33,6 +33,9 @@ class Submission(Base):
     caption: Mapped[str] = mapped_column(Text, nullable=False)
     tags: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
     media: Mapped[list] = mapped_column(JSONB, nullable=False)
+    platform: Mapped[str] = mapped_column(String, nullable=False)
+    expected_publication_date: Mapped[date] = mapped_column(Date, nullable=True)
+    objective: Mapped[str] = mapped_column(Text, nullable=True)
     admin_feedback: Mapped[str] = mapped_column(Text, nullable=True)
     edited_by_admin: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

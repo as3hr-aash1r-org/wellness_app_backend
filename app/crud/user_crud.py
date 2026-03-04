@@ -3,10 +3,12 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 from app.core.security import get_hashed_password, verify_password
 from app.models.user import User,UserRole
+from app.models.referrals import Referrals
 from app.schemas.auth_schema import AdminLogin
 from app.schemas.user_schema import UserCreate, ExpertCreate, ExpertUpdate, ProfileUpdateRequest
 from app.utils.referral_code_generator import generate_referral_code
 from app.utils.country_utils import CountryValidator
+from app.utils.id_generator import generate_user_ids
 
 class CRUDUser:
     def create_user(self, db: Session, *, obj_in: UserCreate):
@@ -18,6 +20,9 @@ class CRUDUser:
         # Generate unique referral code using the strict 2-letter country code
         user_referral_code = generate_referral_code(db, country_code)
         
+        # Generate user IDs based on role
+        user_ids = generate_user_ids(db, obj_in.role.value)
+        
         db_obj = User(
             username = obj_in.username,
             phone_number=obj_in.phone_number,
@@ -27,7 +32,10 @@ class CRUDUser:
             distributor_code=obj_in.distributor_code,
             country=country,
             country_code=country_code,
-            referral_code=user_referral_code
+            referral_code=user_referral_code,
+            g_id=user_ids["g_id"],
+            d_id=user_ids["d_id"],
+            i_id=user_ids["i_id"]
         )
         db.add(db_obj)
         db.commit()
@@ -115,9 +123,29 @@ class CRUDUser:
             raise HTTPException(status_code=404, detail="User not found")
             
         update_data = obj_in.model_dump(exclude_unset=True)
+        
+        # Check if role is being updated
+        role_changed = False
+        new_role = None
+        if "role" in update_data and update_data["role"] != user.role:
+            role_changed = True
+            new_role = update_data["role"]
+        
         for field, value in update_data.items():
             if hasattr(user, field) and value is not None:
                 setattr(user, field, value)
+        
+        # Generate additional IDs if role changed
+        if role_changed:
+            # Generate d_id if changed to official and doesn't have one
+            if new_role == UserRole.official and not user.d_id:
+                from app.utils.id_generator import UserIDGenerator
+                user.d_id = UserIDGenerator.generate_d_id(db)
+            
+            # Generate i_id if changed to influencer and doesn't have one
+            if new_role == UserRole.influencer and not user.i_id:
+                from app.utils.id_generator import UserIDGenerator
+                user.i_id = UserIDGenerator.generate_i_id(db)
                 
         db.commit()
         db.refresh(user)
@@ -236,5 +264,15 @@ class CRUDUser:
         db.delete(expert)
         db.commit()
         return expert
+    
+    def get_referrer_for_user(self, db: Session, *, user_id: int):
+        """Get the referrer (person who referred this user) if exists"""
+        query = (
+            select(User)
+            .join(Referrals, Referrals.referrer_user_id == User.id)
+            .where(Referrals.referred_user_id == user_id)
+        )
+        result = db.execute(query)
+        return result.scalar_one_or_none()
 
 user_crud = CRUDUser()

@@ -36,8 +36,17 @@ def get_user(user_id: int, db: Session = Depends(get_db),
     user = user_crud.get_user_by_id(db=db, user_id=user_id)
     if user is None:
         return success_response(message="User not found")
+    
+    # Get referrer information if user was referred
+    referrer = user_crud.get_referrer_for_user(db=db, user_id=user.id)
+    
+    # Create user response with referrer
+    user_data = UserRead.model_validate(user)
+    if referrer:
+        user_data.referrer = UserRead.model_validate(referrer)
+    
     return success_response(
-        data=UserRead.model_validate(user),
+        data=user_data,
         message="User fetched successfully"
     )
 
@@ -102,8 +111,17 @@ def update_user_image(request: UpdateProfilePictureRequest, db: Session = Depend
     current_user.image_url = request.image_url
     db.commit()
     db.refresh(current_user)
+    
+    # Get referrer information if user was referred
+    referrer = user_crud.get_referrer_for_user(db=db, user_id=current_user.id)
+    
+    # Create user response with referrer
+    user_data = UserRead.model_validate(current_user)
+    if referrer:
+        user_data.referrer = UserRead.model_validate(referrer)
+    
     return success_response(
-        data=current_user,
+        data=user_data,
         message="Profile picture updated successfully"
     )
 
@@ -111,11 +129,20 @@ def update_user_image(request: UpdateProfilePictureRequest, db: Session = Depend
 @router.get("/me/profile", response_model=APIResponse[UserRead])
 @standardize_response
 def get_my_profile(
+    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """Get current user's complete profile"""
+    # Get referrer information if user was referred
+    referrer = user_crud.get_referrer_for_user(db=db, user_id=current_user.id)
+    
+    # Create user response with referrer
+    user_data = UserRead.model_validate(current_user)
+    if referrer:
+        user_data.referrer = UserRead.model_validate(referrer)
+    
     return success_response(
-        data=UserRead.model_validate(current_user),
+        data=user_data,
         message="Profile retrieved successfully"
     )
 
@@ -134,7 +161,15 @@ def update_profile(
         obj_in=profile_data
     )
     
+    # Get referrer information if user was referred
+    referrer = user_crud.get_referrer_for_user(db=db, user_id=updated_user.id)
+    
+    # Create user response with referrer
+    user_data = UserRead.model_validate(updated_user)
+    if referrer:
+        user_data.referrer = UserRead.model_validate(referrer)
+    
     return success_response(
-        data=UserRead.model_validate(updated_user),
+        data=user_data,
         message="Profile updated successfully"
     )

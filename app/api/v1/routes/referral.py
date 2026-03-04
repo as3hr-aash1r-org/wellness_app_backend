@@ -1,6 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 
 from app.core.decorators import standardize_response
 from app.database.session import get_db
@@ -9,6 +9,7 @@ from app.models.user import User
 from app.crud.referral_crud import referral_crud
 from app.crud.reward_crud import reward_crud
 from app.schemas.api_response import success_response, APIResponse
+from app.schemas.referral_schema import InviteListResponse, InviteeDetails
 from pydantic import BaseModel
 
 
@@ -136,4 +137,40 @@ def validate_referral_code(
             "message": f"Valid referral code from {user.username}"
         },
         message="Referral code validation completed"
+    )
+
+
+@router.get("/invites", response_model=APIResponse[InviteListResponse])
+@standardize_response
+def get_invite_list(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    page: int = Query(1, ge=1, description="Page number"),
+    page_size: int = Query(10, ge=1, le=100, description="Items per page"),
+    search: Optional[str] = Query(None, description="Search by name, email, or phone")
+):
+    """
+    Get paginated list of users who signed up using current user's referral code
+    Supports search by username, email, phone, first name, last name, or member name
+    """
+    result = referral_crud.get_invite_list(
+        db=db,
+        user_id=current_user.id,
+        page=page,
+        page_size=page_size,
+        search=search
+    )
+    
+    response_data = InviteListResponse(
+        invitees=[InviteeDetails(**invitee) for invitee in result["invitees"]],
+        total_invites=result["total_invites"],
+        current_page=result["current_page"],
+        page_size=result["page_size"],
+        total_pages=result["total_pages"]
+    )
+    
+    return success_response(
+        data=response_data,
+        message="Invite list retrieved successfully",
+        total_pages=result["total_pages"]
     )

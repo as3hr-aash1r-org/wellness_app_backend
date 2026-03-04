@@ -99,6 +99,9 @@ class UserLogin(BaseModel):
     phone_number: str
 class UserRead(BaseModel):
     id: int
+    g_id: Optional[str] = None  # Genes ID - all users
+    d_id: Optional[str] = None  # Department/Official ID
+    i_id: Optional[str] = None  # Influencer ID
     phone_number: Optional[str]
     username: Optional[str]
     role: UserRole
@@ -116,7 +119,8 @@ class UserRead(BaseModel):
     member_name: Optional[str]
     sponsor_rank: Optional[str]
     email: Optional[str]
-    gender: Optional[str]
+    referrer: Optional['UserRead'] = None
+    
     class Config:
         from_attributes = True
 class UpdateProfilePictureRequest(BaseModel):

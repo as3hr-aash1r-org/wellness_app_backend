@@ -1,7 +1,9 @@
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
-from sqlalchemy import select
+from sqlalchemy import select, func, or_
 from fastapi import HTTPException
+from typing import Optional
+import math
 
 from app.models.user import User
 from app.models.referrals import Referrals
@@ -104,6 +106,95 @@ class CRUDReferral:
             return {"success": False, "message": str(e.detail)}
         except Exception as e:
             return {"success": False, "message": f"Error processing referral: {str(e)}"}
+    
+    def get_invite_list(
+        self, 
+        db: Session, 
+        *, 
+        user_id: int,
+        page: int = 1,
+        page_size: int = 10,
+        search: Optional[str] = None
+    ) -> dict:
+        """
+        Get paginated list of invitees (users who signed up using this user's referral code)
+        with optional search by name
+        """
+        # Base query: JOIN referrals with users to get invitee details
+        query = (
+            select(User, Referrals.created_at)
+            .join(Referrals, Referrals.referred_user_id == User.id)
+            .where(Referrals.referrer_user_id == user_id)
+        )
+        
+        # Apply search filter if provided
+        if search and search.strip():
+            search_term = f"%{search.strip()}%"
+            query = query.where(
+                or_(
+                    User.username.ilike(search_term),
+                    User.email.ilike(search_term),
+                    User.phone_number.ilike(search_term),
+                    User.first_name.ilike(search_term),
+                    User.last_name.ilike(search_term),
+                    User.member_name.ilike(search_term)
+                )
+            )
+        
+        # Get total count for pagination
+        count_query = (
+            select(func.count())
+            .select_from(Referrals)
+            .join(User, Referrals.referred_user_id == User.id)
+            .where(Referrals.referrer_user_id == user_id)
+        )
+        
+        if search and search.strip():
+            search_term = f"%{search.strip()}%"
+            count_query = count_query.where(
+                or_(
+                    User.username.ilike(search_term),
+                    User.email.ilike(search_term),
+                    User.phone_number.ilike(search_term),
+                    User.first_name.ilike(search_term),
+                    User.last_name.ilike(search_term),
+                    User.member_name.ilike(search_term)
+                )
+            )
+        
+        total_count = db.execute(count_query).scalar()
+        
+        # Calculate pagination
+        total_pages = math.ceil(total_count / page_size) if total_count > 0 else 1
+        offset = (page - 1) * page_size
+        
+        # Apply pagination and ordering
+        query = query.order_by(Referrals.created_at.desc()).offset(offset).limit(page_size)
+        
+        # Execute query
+        result = db.execute(query).all()
+        
+        # Format invitees data
+        invitees = []
+        for user, joined_at in result:
+            invitees.append({
+                "user_id": user.id,
+                "username": user.username,
+                "email": user.email,
+                "phone_number": user.phone_number,
+                "country": user.country,
+                "image_url": user.image_url,
+                "joined_at": joined_at,
+                "referral_code": user.referral_code
+            })
+        
+        return {
+            "invitees": invitees,
+            "total_invites": total_count,
+            "current_page": page,
+            "page_size": page_size,
+            "total_pages": total_pages
+        }
 
 
 referral_crud = CRUDReferral()

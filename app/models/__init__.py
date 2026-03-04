@@ -11,6 +11,7 @@ from app.models.referrals import Referrals
 from app.models.user_rewards import UserReward
 from app.models.challenge import Challenge, UserChallenge
 from app.models.wellness import Wellness
+from app.models.submission import Submission
 
 __all__ = [
     "User",
@@ -28,5 +29,6 @@ __all__ = [
     "UserReward",
     "Challenge",
     "UserChallenge",
-    "Wellness"
+    "Wellness",
+    "Submission"
 ]

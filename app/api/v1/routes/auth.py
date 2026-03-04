@@ -63,7 +63,7 @@ def register_user(*, db: Session = Depends(get_db), user_in: UserCreate):
                 referred_user_id=user.id,
                 referral_id=referral_result["referral_relationship"].id
             )
-            
+                
             if reward_result["success"]:
                 referral_message = "Referral bonus: 30 days"
             else:
@@ -71,11 +71,19 @@ def register_user(*, db: Session = Depends(get_db), user_in: UserCreate):
         else:
             referral_message = None
     
+    # Get referrer information if user was referred
+    referrer = user_crud.get_referrer_for_user(db=db, user_id=user.id)
+    
+    # Create user response with referrer
+    user_data = UserRead.model_validate(user)
+    if referrer:
+        user_data.referrer = UserRead.model_validate(referrer)
+    
     token = create_access_token(user.id)
     success_message = f"User created successfully {referral_message}"
     
     return success_response(
-        data=LoginResponse(access_token=token, token_type="bearer", user=user),
+        data=LoginResponse(access_token=token, token_type="bearer", user=user_data),
         message=success_message,
         status_code=201
     )
@@ -88,8 +96,16 @@ def login_user(user_in: UserLogin, db: Session = Depends(get_db)):
     if not user:
         raise HTTPException(status_code=400, detail="Incorrect phone number")
     
+    # Get referrer information if user was referred
+    referrer = user_crud.get_referrer_for_user(db=db, user_id=user.id)
+    
+    # Create user response with referrer
+    user_data = UserRead.model_validate(user)
+    if referrer:
+        user_data.referrer = UserRead.model_validate(referrer)
+    
     token = create_access_token(user.id)
-    response_data = LoginResponse(access_token=token, token_type="bearer", user=user)
+    response_data = LoginResponse(access_token=token, token_type="bearer", user=user_data)
     return success_response(
         data=response_data,
         status_code=200,
@@ -119,5 +135,13 @@ def admin_login(db: Session = Depends(get_db),form_data: OAuth2PasswordRequestFo
 @router.get("/me",response_model=APIResponse[UserRead])
 @standardize_response
 def my_profile(*, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    return success_response(data=UserRead.model_validate(current_user),message="User fetched successfully")
+    # Get referrer information if user was referred
+    referrer = user_crud.get_referrer_for_user(db=db, user_id=current_user.id)
+    
+    # Create user response with referrer
+    user_data = UserRead.model_validate(current_user)
+    if referrer:
+        user_data.referrer = UserRead.model_validate(referrer)
+    
+    return success_response(data=user_data, message="User fetched successfully")
 

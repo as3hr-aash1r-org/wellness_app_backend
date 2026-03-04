@@ -20,6 +20,9 @@ class User(Base):
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    g_id: Mapped[str] = mapped_column(String(5), nullable=True, unique=True)  # Genes ID - all users
+    d_id: Mapped[str] = mapped_column(String(5), nullable=True, unique=True)  # Department/Official ID
+    i_id: Mapped[str] = mapped_column(String(5), nullable=True, unique=True)  # Influencer ID
     email: Mapped[str] = mapped_column(String, nullable=True,unique=True)
     username: Mapped[str] = mapped_column(String, nullable=True)
     sponsor_name: Mapped[str] = mapped_column(String, nullable=True)

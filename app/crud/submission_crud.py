@@ -17,6 +17,9 @@ class CRUDSubmission:
             caption=obj_in.caption,
             tags=obj_in.tags,
             media=media_data,
+            platform=obj_in.platform,
+            expected_publication_date=obj_in.expected_publication_date,
+            objective=obj_in.objective,
             status=SubmissionStatus.pending,
             edited_by_admin=False
         )

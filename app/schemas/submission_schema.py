@@ -1,6 +1,6 @@
 from pydantic import BaseModel, field_validator
 from typing import Optional, List
-from datetime import datetime
+from datetime import datetime, date
 from enum import Enum
 
 
@@ -32,6 +32,9 @@ class SubmissionCreate(BaseModel):
     caption: str
     tags: List[str] = []
     media: List[MediaItem]
+    platform: str
+    expected_publication_date: Optional[date] = None
+    objective: Optional[str] = None
     
     @field_validator('media')
     @classmethod
@@ -46,12 +49,22 @@ class SubmissionCreate(BaseModel):
         if not v or not v.strip():
             raise ValueError('Caption cannot be empty')
         return v.strip()
+    
+    @field_validator('platform')
+    @classmethod
+    def validate_platform(cls, v):
+        if not v or not v.strip():
+            raise ValueError('Platform is required')
+        return v.strip()
 
 
 class SubmissionUpdate(BaseModel):
     caption: Optional[str] = None
     tags: Optional[List[str]] = None
     media: Optional[List[MediaItem]] = None
+    platform: Optional[str] = None
+    expected_publication_date: Optional[date] = None
+    objective: Optional[str] = None
     
     @field_validator('media')
     @classmethod
@@ -59,6 +72,13 @@ class SubmissionUpdate(BaseModel):
         if v is not None and len(v) == 0:
             raise ValueError('At least one media item is required')
         return v
+    
+    @field_validator('platform')
+    @classmethod
+    def validate_platform(cls, v):
+        if v is not None and (not v or not v.strip()):
+            raise ValueError('Platform cannot be empty')
+        return v.strip() if v else None
 
 
 class SubmissionReject(BaseModel):
@@ -79,6 +99,9 @@ class SubmissionRead(BaseModel):
     caption: str
     tags: List[str]
     media: List[MediaItem]
+    platform: str
+    expected_publication_date: Optional[date]
+    objective: Optional[str]
     admin_feedback: Optional[str]
     edited_by_admin: bool
     created_at: datetime

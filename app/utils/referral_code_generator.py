@@ -135,31 +135,25 @@ class ReferralCodeGenerator:
     @classmethod
     def is_valid_referral_code(cls, code: str) -> bool:
         """Validate if a referral code has the correct format"""
-        if not code or len(code) < 6:
+        if not code or len(code) < 8:  # Minimum: 2-letter prefix + AAA + 000
             return False
         
-        # Check if it starts with a valid country prefix
-        valid_prefix = False
-        prefix_used = None
-        
-        for prefix in cls.COUNTRY_PREFIX_MAP.values():
-            if code.startswith(prefix):
-                valid_prefix = True
-                prefix_used = prefix
-                break
-        
-        if code.startswith(cls.DEFAULT_PREFIX):
-            valid_prefix = True
-            prefix_used = cls.DEFAULT_PREFIX
-        
-        if not valid_prefix:
+        # Extract potential prefix (first 2 characters should be letters)
+        if len(code) < 8:
             return False
         
-        if len(code) != len(prefix_used) + 6:
+        prefix = code[:2]
+        
+        # Prefix should be 2 uppercase letters
+        if not prefix.isalpha() or not prefix.isupper():
             return False
         
-        letters = code[len(prefix_used):len(prefix_used)+3]
-        numbers = code[len(prefix_used)+3:len(prefix_used)+6]
+        # Should have exactly 8 characters total (2 prefix + 3 letters + 3 digits)
+        if len(code) != 8:
+            return False
+        
+        letters = code[2:5]  # Characters 2-4 (3 letters)
+        numbers = code[5:8]  # Characters 5-7 (3 digits)
         
         # Check if letters are all uppercase A-Z
         if not letters.isalpha() or not letters.isupper():
