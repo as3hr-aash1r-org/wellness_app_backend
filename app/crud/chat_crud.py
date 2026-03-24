@@ -116,8 +116,11 @@ class CRUDChatRoom:
             db.refresh(chat_room)
         return chat_room
     def get_available_experts(self, db: Session) -> List[User]:
-        """Get all available experts"""
-        query = select(User).where(User.role == UserRole.expert)
+        """Get all available experts (active, not deleted)"""
+        query = select(User).where(
+            User.role == UserRole.expert,
+            (User.is_deleted == False) | (User.is_deleted == None)
+        )
         result = db.execute(query)
         return list(result.scalars().all())
     

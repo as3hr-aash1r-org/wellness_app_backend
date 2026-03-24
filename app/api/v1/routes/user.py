@@ -71,7 +71,6 @@ def update_fcm_token(user_id: int, token_data: FCMTokenUpdate, db: Session = Dep
         message="FCM token updated successfully"
     )
 
-
 @router.post("/", response_model=APIResponse[UserRead])
 @standardize_response
 def create_user(

@@ -1,3 +1,4 @@
+from datetime import datetime
 from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -116,6 +117,64 @@ class CRUDUser:
         user.fcm_token = fcm_token
         db.commit()
         return user
+    
+    def _handle_role_change_chat_rooms(self, db: Session, user: User, old_role: UserRole, new_role: UserRole):
+        """Handle chat room implications when a user's role changes"""
+        from app.models.chat import ChatRoom
+        
+        # Case 1: Expert → User/Official/Influencer
+        if old_role == UserRole.expert and new_role in [UserRole.user, UserRole.official, UserRole.influencer]:
+            # Check if there are other active experts
+            other_experts_query = select(User).where(
+                User.role == UserRole.expert,
+                User.id != user.id,
+                (User.is_deleted == False) | (User.is_deleted == None)
+            )
+            other_experts = list(db.execute(other_experts_query).scalars().all())
+            
+            if not other_experts:
+                raise HTTPException(
+                    status_code=400, 
+                    detail="Cannot change role: This is the only expert in the system. At least one expert must remain."
+                )
+            
+            # Find all active chat rooms where this user is the expert
+            expert_rooms_query = select(ChatRoom).where(
+                ChatRoom.expert_id == user.id,
+                ChatRoom.is_active == True
+            )
+            expert_rooms = list(db.execute(expert_rooms_query).scalars().all())
+            
+            if expert_rooms:
+                # Find the least busy expert from the available experts
+                from app.crud.chat_crud import chat_room_crud
+                least_busy_expert = chat_room_crud.find_least_busy_expert(db)
+                
+                if least_busy_expert:
+                    # Reassign all chat rooms to the least busy expert
+                    for room in expert_rooms:
+                        room.expert_id = least_busy_expert.id
+                        room.updated_at = datetime.utcnow()
+                    print(f"Reassigned {len(expert_rooms)} chat rooms from expert {user.id} to expert {least_busy_expert.id}")
+        
+        # Case 2: User/Official/Influencer → Expert
+        elif old_role in [UserRole.user, UserRole.official, UserRole.influencer] and new_role == UserRole.expert:
+            # Find all active chat rooms where this user is the customer
+            customer_rooms_query = select(ChatRoom).where(
+                ChatRoom.user_id == user.id,
+                ChatRoom.is_active == True
+            )
+            customer_rooms = list(db.execute(customer_rooms_query).scalars().all())
+            
+            if customer_rooms:
+                # Soft delete (deactivate) all their customer chat rooms
+                for room in customer_rooms:
+                    room.is_active = False
+                    room.updated_at = datetime.utcnow()
+                print(f"Deactivated {len(customer_rooms)} chat rooms for user {user.id} (became expert)")
+        
+        # Case 3: User/Official/Influencer ↔ User/Official/Influencer or Admin changes
+        # No action needed - chat rooms remain as-is
         
     def update_user(self, db: Session, *, user_id: int, obj_in):
         user = self.get_user_by_id(db, user_id=user_id)
@@ -126,10 +185,14 @@ class CRUDUser:
         
         # Check if role is being updated
         role_changed = False
+        old_role = user.role
         new_role = None
         if "role" in update_data and update_data["role"] != user.role:
             role_changed = True
             new_role = update_data["role"]
+            
+            # Handle chat room implications of role changes
+            self._handle_role_change_chat_rooms(db, user, old_role, new_role)
         
         for field, value in update_data.items():
             if hasattr(user, field) and value is not None:

@@ -21,13 +21,11 @@ router = APIRouter(prefix="/chat", tags=["Chat"])
 def create_chat_room(*, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Create a new chat room for the current user"""
     if current_user.role == UserRole.expert or current_user.role == UserRole.admin:
-        raise HTTPException(status_code=403, detail="Only users and officials can create chat rooms")
+        raise HTTPException(status_code=403, detail="Only users, officials, and influencers can create chat rooms")
     # Check if user already has an active chat room
     existing_room = chat_room_crud.get_user_chat_room(db, user_id=current_user.id)
     if existing_room:
-        if current_user.role == UserRole.user:
-            existing_room.user = existing_room.expert
-        elif current_user.role == UserRole.official:
+        if current_user.role in [UserRole.user, UserRole.official, UserRole.influencer]:
             existing_room.user = existing_room.expert
         elif current_user.role == UserRole.expert:
             existing_room.user = existing_room.user 
@@ -44,7 +42,7 @@ def create_chat_room(*, db: Session = Depends(get_db), current_user: User = Depe
     )
 
     # Custom expert assignment based on phone numbers for testing
-    if current_user.role == UserRole.user or current_user.role == UserRole.official:
+    if current_user.role == UserRole.user or current_user.role == UserRole.official or current_user.role == UserRole.influencer:
         expert = None
         # +921136587652 ## prod expert
         try:
