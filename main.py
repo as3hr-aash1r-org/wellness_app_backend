@@ -20,6 +20,7 @@ from app.api.v1.routes import (
     wellness,
     influencer_submissions,
     admin_influencer_submissions,
+    desire_list,
 )
 from app.database.base import Base
 from app.database.session import engine
@@ -60,6 +61,7 @@ app.include_router(challenge.router, prefix="/api")
 app.include_router(wellness.router, prefix="/api", tags=["wellness"])
 app.include_router(influencer_submissions.router, prefix="/api")
 app.include_router(admin_influencer_submissions.router, prefix="/api")
+app.include_router(desire_list.router, prefix="/api")
 
 @app.exception_handler(StarletteHTTPException)
 async def http_exception_handler(request: Request, exc: StarletteHTTPException):

@@ -12,6 +12,7 @@ from app.models.user_rewards import UserReward
 from app.models.challenge import Challenge, UserChallenge
 from app.models.wellness import Wellness
 from app.models.submission import Submission
+from app.models.desire_list import DesireListItem
 
 __all__ = [
     "User",
@@ -30,5 +31,6 @@ __all__ = [
     "Challenge",
     "UserChallenge",
     "Wellness",
-    "Submission"
+    "Submission",
+    "DesireListItem"
 ]
