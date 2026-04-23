@@ -2,7 +2,7 @@
 from app.models.user import User
 from app.models.chat import ChatRoom, Message
 from app.models.dxn_directory import DXNDirectory
-from app.models.fact import Fact
+from app.models.fact import Fact, FactTODPointer, UserFactLibrary
 from app.models.feed import FeedCategory, FeedItem
 from app.models.notifications import Notifications
 from app.models.password_reset_tokens import PasswordResetTokens
@@ -20,6 +20,8 @@ __all__ = [
     "Message",
     "DxnDirectory",
     "Fact",
+    "FactTODPointer",
+    "UserFactLibrary",
     "FeedCategory",
     "FeedItem", 
     "Notification",

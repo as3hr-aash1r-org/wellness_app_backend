@@ -11,19 +11,17 @@ class FactBase(BaseModel):
 
 
 class FactCreate(FactBase):
-    is_tod: Optional[bool] = False
+    pass
 
 
 class FactUpdate(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
     type: Optional[FactType] = None
-    is_tod: Optional[bool] = None
 
 
 class FactRead(FactBase):
     id: int
-    is_tod: bool
     created_at: datetime
     updated_at: datetime
 
@@ -33,3 +31,28 @@ class FactRead(FactBase):
 
 class FactInDB(FactRead):
     pass
+
+
+# Bulk upload schemas
+class BulkUploadError(BaseModel):
+    row: int
+    reason: str
+
+
+class BulkUploadResponse(BaseModel):
+    total_rows: int
+    inserted: int
+    failed: int
+    errors: list[BulkUploadError]
+
+
+# User fact library schemas
+class UserFactLibraryOut(BaseModel):
+    id: int
+    user_id: int
+    fact_id: int
+    saved_at: datetime
+    fact: FactRead
+
+    class Config:
+        from_attributes = True

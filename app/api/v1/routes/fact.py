@@ -1,6 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
 from sqlalchemy.orm import Session
 from typing import List, Optional
+import openpyxl
+from io import BytesIO
 
 from app.core.decorators import standardize_response
 from app.database.session import get_db
@@ -9,7 +11,13 @@ from app.models.user import User
 from app.models.fact import FactType
 from app.crud.fact_crud import fact_crud
 from app.schemas.api_response import success_response, APIResponse
-from app.schemas.fact_schema import FactCreate, FactUpdate, FactRead
+from app.schemas.fact_schema import (
+    FactCreate, 
+    FactUpdate, 
+    FactRead, 
+    BulkUploadResponse,
+    UserFactLibraryOut
+)
 import math
 
 
@@ -34,6 +42,60 @@ def create_fact(
         message="Fact created successfully",
         status_code=201
     )
+
+
+@router.post("/bulk-upload", response_model=APIResponse[BulkUploadResponse])
+@standardize_response
+def bulk_upload_facts(
+    *,
+    db: Session = Depends(get_db),
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user)
+):
+    """Bulk upload facts from Excel file (Admin only)"""
+    if current_user.role.value != "admin":
+        raise HTTPException(status_code=403, detail="Only admins can upload facts")
+    
+    # Validate file extension
+    if not file.filename.endswith(('.xlsx', '.xls')):
+        raise HTTPException(status_code=400, detail="Only .xlsx or .xls files are allowed")
+    
+    try:
+        # Read Excel file
+        contents = file.file.read()
+        workbook = openpyxl.load_workbook(BytesIO(contents), read_only=True)
+        sheet = workbook.active
+        
+        # Parse rows (skip header)
+        facts_data = []
+        for row in sheet.iter_rows(min_row=2, values_only=True):
+            if not any(row):  # Skip empty rows
+                continue
+            
+            facts_data.append({
+                'title': row[0] if len(row) > 0 else None,
+                'description': row[1] if len(row) > 1 else None,
+                'type': row[2] if len(row) > 2 else None
+            })
+        
+        if not facts_data:
+            raise HTTPException(status_code=400, detail="No valid data found in Excel file")
+        
+        # Bulk create
+        result = fact_crud.bulk_create_facts(db=db, facts_data=facts_data)
+        
+        return success_response(
+            data=BulkUploadResponse(**result),
+            message="Bulk upload complete",
+            status_code=201
+        )
+        
+    except openpyxl.utils.exceptions.InvalidFileException:
+        raise HTTPException(status_code=400, detail="Invalid Excel file format")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error processing file: {str(e)}")
+    finally:
+        file.file.close()
 
 
 @router.get("/", response_model=APIResponse[List[FactRead]])
@@ -79,15 +141,16 @@ def get_facts_by_type(
 @standardize_response
 def get_tip_of_the_day(
     fact_type: FactType,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
-    """Get the current tip of the day for a specific type"""
-    tip = fact_crud.get_tip_of_the_day(db=db, fact_type=fact_type)
+    """Get the current tip of the day for a specific type (skips facts already in user's library)"""
+    tip = fact_crud.get_tip_of_the_day(db=db, fact_type=fact_type, user_id=current_user.id)
     
     if not tip:
         raise HTTPException(
             status_code=404, 
-            detail=f"No tip of the day found for {fact_type.value}"
+            detail=f"No new tip of the day found for {fact_type.value}. You've read all available facts!"
         )
     
     return success_response(
@@ -142,7 +205,7 @@ def delete_fact(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Delete a fact (Admin only)"""
+    """Delete a fact (Admin only) - cascades to user libraries"""
     if current_user.role.value != "admin":
         raise HTTPException(status_code=403, detail="Only admins can delete facts")
     
@@ -150,25 +213,6 @@ def delete_fact(
     return success_response(
         data=fact,
         message="Fact deleted successfully"
-    )
-
-
-@router.post("/{fact_id}/set-tip-of-the-day", response_model=APIResponse[FactRead])
-@standardize_response
-def set_tip_of_the_day(
-    fact_id: int,
-    *,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    """Set a specific fact as tip of the day for its type (Admin only)"""
-    if current_user.role.value != "admin":
-        raise HTTPException(status_code=403, detail="Only admins can set tip of the day")
-    
-    fact = fact_crud.set_tip_of_the_day(db=db, fact_id=fact_id)
-    return success_response(
-        data=fact,
-        message=f"Fact set as tip of the day for {fact.type.value} successfully"
     )
 
 
@@ -184,9 +228,90 @@ def get_facts_count_by_type(
     
     stats = {}
     for fact_type in FactType:
-        stats[fact_type.value] = fact_crud.get_facts_count_by_type(db=db, fact_type=fact_type)
+        stats[fact_type.value] = fact_crud.count_facts_by_type(db=db, fact_type=fact_type)
     
     return success_response(
         data=stats,
         message="Facts count by type retrieved successfully"
+    )
+
+
+# User Fact Library Endpoints
+
+@router.post("/{fact_id}/save-to-library", response_model=APIResponse[UserFactLibraryOut])
+@standardize_response
+def save_fact_to_library(
+    fact_id: int,
+    *,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Save fact to user's library (idempotent - triggered by 'Read More' tap)"""
+    library_entry = fact_crud.save_to_library(
+        db=db,
+        user_id=current_user.id,
+        fact_id=fact_id
+    )
+    
+    return success_response(
+        data=library_entry,
+        message="Fact saved to library successfully"
+    )
+
+
+@router.get("/library", response_model=APIResponse[List[UserFactLibraryOut]])
+@standardize_response
+def get_user_fact_library(
+    current_page: int = Query(1, ge=1, description="Current page number"),
+    limit: int = Query(100, ge=1, le=100),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get user's fact library (all saved facts)"""
+    skip = (current_page - 1) * limit
+    library = fact_crud.get_user_library(
+        db=db,
+        user_id=current_user.id,
+        skip=skip,
+        limit=limit
+    )
+    total_items = fact_crud.count_user_library(db=db, user_id=current_user.id)
+    total_pages = math.ceil(total_items / limit) if limit else 1
+    
+    return success_response(
+        data=library,
+        message="Fact library retrieved successfully",
+        total_pages=total_pages
+    )
+
+
+@router.get("/library/type/{fact_type}", response_model=APIResponse[List[UserFactLibraryOut]])
+@standardize_response
+def get_user_fact_library_by_type(
+    fact_type: FactType,
+    current_page: int = Query(1, ge=1, description="Current page number"),
+    limit: int = Query(100, ge=1, le=100),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get user's fact library filtered by type"""
+    skip = (current_page - 1) * limit
+    library = fact_crud.get_user_library(
+        db=db,
+        user_id=current_user.id,
+        fact_type=fact_type,
+        skip=skip,
+        limit=limit
+    )
+    total_items = fact_crud.count_user_library(
+        db=db,
+        user_id=current_user.id,
+        fact_type=fact_type
+    )
+    total_pages = math.ceil(total_items / limit) if limit else 1
+    
+    return success_response(
+        data=library,
+        message=f"{fact_type.value.title()} facts from library retrieved successfully",
+        total_pages=total_pages
     )

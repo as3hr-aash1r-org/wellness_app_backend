@@ -2,6 +2,7 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
 from app.schemas.api_response import create_response
 from app.api.v1.routes import (
     auth,
@@ -24,17 +25,29 @@ from app.api.v1.routes import (
 )
 from app.database.base import Base
 from app.database.session import engine
+from app.services.fact_tod_scheduler import start_scheduler, stop_scheduler
 import app.models  # Add this line
 
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="Health & Wellness App API",
- version="1.0.0",
- docs_url="/api/docs",
- openapi_url="/api/openapi.json"
- )
+# Lifespan context manager for startup/shutdown events
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: Start the TOD scheduler
+    scheduler = start_scheduler()
+    yield
+    # Shutdown: Stop the scheduler
+    stop_scheduler(scheduler)
+
+app = FastAPI(
+    title="Health & Wellness App API",
+    version="1.0.0",
+    docs_url="/api/docs",
+    openapi_url="/api/openapi.json",
+    lifespan=lifespan
+)
 
 # Add CORS middleware
 app.add_middleware(
