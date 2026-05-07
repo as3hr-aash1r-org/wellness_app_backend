@@ -46,9 +46,15 @@ def get_all_products(
     category_id: Optional[int] = Query(None, description="Filter by category ID"),
     category_name: Optional[str] = Query(None, description="Filter by category name (deprecated, use category_id)"),
     search: Optional[str] = Query(None),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """Get products with filtering options"""
+    # Track that user viewed products (for level progression)
+    from app.services.level_service import LevelService
+    level_service = LevelService(db)
+    level_service.on_products_viewed(current_user.id)
+    
     try:
         offset = (current_page - 1) * limit
         if search:
@@ -75,6 +81,8 @@ def get_all_products(
             if product.category:
                 product_out.category_name = product.category.name
             product_outs.append(product_out)
+        
+        db.commit()  # Commit condition tracking
         
         return success_response(
             data=product_outs,

@@ -119,6 +119,7 @@ class UserRead(BaseModel):
     member_name: Optional[str]
     sponsor_rank: Optional[str]
     email: Optional[str]
+    app_level: str
     referrer: Optional['UserRead'] = None
     
     class Config:

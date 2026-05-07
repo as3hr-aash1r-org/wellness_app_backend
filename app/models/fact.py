@@ -50,3 +50,4 @@ class UserFactLibrary(Base):
     # Relationships
     user = relationship("User", backref="fact_library")
     fact = relationship("Fact", backref="user_libraries")
+

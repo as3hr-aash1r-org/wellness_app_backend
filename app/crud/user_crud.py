@@ -13,6 +13,8 @@ from app.utils.id_generator import generate_user_ids
 
 class CRUDUser:
     def create_user(self, db: Session, *, obj_in: UserCreate):
+        from app.models.user import AppLevel
+        
         # Use country and country_code provided by frontend
         country = obj_in.country.strip() if obj_in.country else "Unknown"
         country_code = obj_in.country_code.strip() if obj_in.country_code else "XX"
@@ -28,6 +30,7 @@ class CRUDUser:
             username = obj_in.username,
             phone_number=obj_in.phone_number,
             role=obj_in.role,
+            app_level=AppLevel.new_joiner,  # Set default level
             sponsor_name=obj_in.sponsor_name,
             sponsor_code=obj_in.sponsor_code,
             distributor_code=obj_in.distributor_code,
@@ -36,7 +39,7 @@ class CRUDUser:
             referral_code=user_referral_code,
             g_id=user_ids["g_id"],
             d_id=user_ids["d_id"],
-            i_id=user_ids["i_id"]
+            i_id=user_ids["i_id"],
         )
         db.add(db_obj)
         db.commit()
@@ -219,8 +222,24 @@ class CRUDUser:
         user = self.get_user_by_id(db, user_id=user_id)
         if user is None:
             raise HTTPException(status_code=404, detail="User not found")
-            
+        
+        # Check if codes are already set (locked)
+        if user.sponsor_code and user.distributor_code:
+            # Reject any attempt to update sponsor_code or distributor_code
+            if obj_in.sponsor_code is not None or obj_in.distributor_code is not None:
+                raise HTTPException(
+                    status_code=400, 
+                    detail="Sponsor and distributor codes are already locked and cannot be changed"
+                )
+        
         update_data = obj_in.model_dump(exclude_unset=True)
+        
+        # Check if both codes are being set for the first time
+        codes_being_set = (
+            'sponsor_code' in update_data and update_data['sponsor_code'] and
+            'distributor_code' in update_data and update_data['distributor_code'] and
+            not (user.sponsor_code and user.distributor_code)
+        )
         
         # Only update allowed fields
         allowed_fields = {
@@ -231,6 +250,12 @@ class CRUDUser:
         for field, value in update_data.items():
             if field in allowed_fields and hasattr(user, field):
                 setattr(user, field, value)
+        
+        # Trigger DXN New upgrade if both codes were just set
+        if codes_being_set:
+            from app.services.level_service import LevelService
+            level_service = LevelService(db)
+            level_service.upgrade_to_dxn_new(user.id)
                 
         db.commit()
         db.refresh(user)

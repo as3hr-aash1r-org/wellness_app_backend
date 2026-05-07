@@ -1,6 +1,6 @@
 from typing import List, Optional
 from fastapi import HTTPException
-from sqlalchemy import select, and_, func
+from sqlalchemy import select, and_, func, cast, Date
 from sqlalchemy.orm import Session, joinedload
 from datetime import datetime, date
 
@@ -57,7 +57,42 @@ class CRUDFact:
         return result.scalar()
 
     def get_tip_of_the_day(self, db: Session, *, fact_type: FactType, user_id: int) -> Optional[Fact]:
-        """Get the current tip of the day for a specific type, skipping facts already in user's library"""
+        """
+        Get the current tip of the day for a specific type.
+        Returns None if user has already saved ANY fact of this type TODAY (Pakistan timezone).
+        Strictly 1 tip per day per type.
+        """
+        # Get today's date in Pakistan timezone (consistent with cron job)
+        from pytz import timezone
+        pkt = timezone('Asia/Karachi')
+        now_pkt = datetime.now(pkt)
+        today_pkt = now_pkt.date()
+        
+        # Calculate the start and end of today in Pakistan timezone, then convert to UTC
+        # This ensures we're comparing apples to apples (UTC saved_at vs UTC range)
+        start_of_today_pkt = pkt.localize(datetime.combine(today_pkt, datetime.min.time()))
+        end_of_today_pkt = pkt.localize(datetime.combine(today_pkt, datetime.max.time()))
+        
+        start_of_today_utc = start_of_today_pkt.astimezone(timezone('UTC')).replace(tzinfo=None)
+        end_of_today_utc = end_of_today_pkt.astimezone(timezone('UTC')).replace(tzinfo=None)
+        
+        # Query: Check if user saved any fact of this type today (in Pakistan timezone)
+        saved_today_query = select(UserFactLibrary).join(Fact).where(
+            and_(
+                UserFactLibrary.user_id == user_id,
+                Fact.type == fact_type,
+                UserFactLibrary.saved_at >= start_of_today_utc,
+                UserFactLibrary.saved_at <= end_of_today_utc
+            )
+        )
+        result = db.execute(saved_today_query)
+        saved_today = result.scalar_one_or_none()
+        
+        if saved_today:
+            # User has already read a tip today - return None
+            return None
+        
+        # Get current pointer
         query = select(FactTODPointer).where(FactTODPointer.type == fact_type)
         result = db.execute(query)
         pointer = result.scalar_one_or_none()
@@ -65,58 +100,8 @@ class CRUDFact:
         if not pointer or pointer.current_fact_id is None:
             return None
         
-        # Get user's saved fact IDs for this type
-        saved_fact_ids_query = select(UserFactLibrary.fact_id).join(Fact).where(
-            and_(
-                UserFactLibrary.user_id == user_id,
-                Fact.type == fact_type
-            )
-        )
-        result = db.execute(saved_fact_ids_query)
-        saved_fact_ids = set(row[0] for row in result.fetchall())
-        
-        # If no saved facts, return current pointer fact
-        if not saved_fact_ids:
-            return self.get_fact_by_id(db, fact_id=pointer.current_fact_id)
-        
-        # Find next unsaved fact starting from current pointer
-        max_attempts = 1000  # Prevent infinite loop
-        current_fact_id = pointer.current_fact_id
-        
-        for _ in range(max_attempts):
-            # Check if current fact is not in user's library
-            if current_fact_id not in saved_fact_ids:
-                return self.get_fact_by_id(db, fact_id=current_fact_id)
-            
-            # Get next fact in queue
-            query = select(Fact).where(
-                and_(
-                    Fact.type == fact_type,
-                    Fact.id > current_fact_id
-                )
-            ).order_by(Fact.id.asc()).limit(1)
-            result = db.execute(query)
-            next_fact = result.scalar_one_or_none()
-            
-            if next_fact:
-                current_fact_id = next_fact.id
-            else:
-                # Loop back to first fact
-                query = select(Fact).where(Fact.type == fact_type).order_by(Fact.id.asc()).limit(1)
-                result = db.execute(query)
-                first_fact = result.scalar_one_or_none()
-                
-                if not first_fact:
-                    return None
-                
-                current_fact_id = first_fact.id
-                
-                # If we've looped back to pointer position, user has read all facts
-                if current_fact_id == pointer.current_fact_id:
-                    return None
-        
-        # If we exhausted attempts, return None
-        return None
+        # Return the current pointer fact
+        return self.get_fact_by_id(db, fact_id=pointer.current_fact_id)
 
     def update_fact(self, db: Session, *, fact_id: int, obj_in: FactUpdate) -> Fact:
         """Update a fact"""
@@ -322,13 +307,17 @@ class CRUDFact:
 
     # User Fact Library methods
     def save_to_library(self, db: Session, *, user_id: int, fact_id: int) -> UserFactLibrary:
-        """Save fact to user's library (idempotent)"""
+        """
+        Save fact to user's library with current timestamp.
+        Called when user clicks 'Read More'.
+        The saved_at timestamp is used to check if user has read a tip today.
+        """
         # Check if fact exists
         fact = self.get_fact_by_id(db, fact_id=fact_id)
         if not fact:
             raise HTTPException(status_code=404, detail="Fact not found")
         
-        # Check if already in library
+        # Save to library (idempotent)
         query = select(UserFactLibrary).where(
             and_(
                 UserFactLibrary.user_id == user_id,
@@ -338,17 +327,18 @@ class CRUDFact:
         result = db.execute(query)
         existing = result.scalar_one_or_none()
         
-        if existing:
-            return existing
+        if not existing:
+            library_entry = UserFactLibrary(
+                user_id=user_id,
+                fact_id=fact_id,
+                saved_at=datetime.utcnow()
+            )
+            db.add(library_entry)
+            db.commit()
+            db.refresh(library_entry)
+        else:
+            library_entry = existing
         
-        # Create new library entry
-        library_entry = UserFactLibrary(
-            user_id=user_id,
-            fact_id=fact_id
-        )
-        db.add(library_entry)
-        db.commit()
-        db.refresh(library_entry)
         return library_entry
 
     def get_user_library(

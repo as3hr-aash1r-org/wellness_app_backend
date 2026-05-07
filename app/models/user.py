@@ -16,6 +16,13 @@ class UserRole(str, Enum):
     influencer = "influencer"
 
 
+class AppLevel(str, Enum):
+    new_joiner = "new_joiner"
+    prospect = "prospect"
+    dxn_new = "dxn_new"
+    guide = "guide"
+
+
 class User(Base):
     __tablename__ = "users"
 
@@ -35,6 +42,11 @@ class User(Base):
     # email: Mapped[str] = mapped_column(String, nullable=False, unique=True)
     password_hash: Mapped[str] = mapped_column(String, nullable=True)
     role: Mapped[UserRole] = mapped_column(SQLAEnum(UserRole), nullable=False)
+    
+    # User level system
+    app_level: Mapped[AppLevel] = mapped_column(SQLAEnum(AppLevel), nullable=False, default=AppLevel.new_joiner)
+    level_upgraded_at: Mapped[datetime] = mapped_column(DateTime, nullable=True)
+    
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow())
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow(), onupdate=datetime.utcnow(),
                                                  nullable=True)

@@ -4,33 +4,21 @@ from phonenumbers import NumberParseException
 
 class CountryValidator:
     """
-    Utility to validate consistency between country name, country code, and phone data.
+    Utility to validate consistency between country code and phone data.
     """
     
     @staticmethod
     def validate_consistency(country_name: str, country_code: str, phone_code: str, phone_number: str) -> None:
         """
-        Validates that all country-related fields are consistent with each other.
+        Validates that country code, phone code, and phone number are consistent.
+        Note: country_name is accepted but not validated (can be in any language).
         Raises ValueError if any inconsistency is found.
         """
-        # 1. Validate Country Code (ISO) against Country Name
+        # 1. Validate Country Code (ISO) exists
         try:
-            # Look up country by alpha_2 code
             country_obj = pycountry.countries.get(alpha_2=country_code.upper())
             if not country_obj:
                 raise ValueError(f"Invalid country code: {country_code}")
-            
-            # Check if name matches (fuzzy match or exact)
-            # We'll check if the provided name is contained in the official name or common name
-            # or if the official name is contained in the provided name (for flexibility)
-            official_name = getattr(country_obj, 'name', '').lower()
-            common_name = getattr(country_obj, 'common_name', '').lower()
-            provided_name = country_name.lower()
-            
-            if provided_name not in official_name and provided_name not in common_name and \
-               official_name not in provided_name:
-                raise ValueError(f"Country name '{country_name}' does not match country code '{country_code}' ({country_obj.name})")
-                
         except KeyError:
              raise ValueError(f"Invalid country code: {country_code}")
 

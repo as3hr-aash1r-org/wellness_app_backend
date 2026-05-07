@@ -22,10 +22,16 @@ from app.api.v1.routes import (
     influencer_submissions,
     admin_influencer_submissions,
     desire_list,
+    admin_level,
+    user_level,
+    card,
+    support_ticket,
+    influencer_analytics,
 )
 from app.database.base import Base
 from app.database.session import engine
 from app.services.fact_tod_scheduler import start_scheduler, stop_scheduler
+from app.middleware.session_tracker import SessionTrackerMiddleware
 import app.models  # Add this line
 
 
@@ -58,6 +64,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Add session tracker middleware
+app.add_middleware(SessionTrackerMiddleware)
+
 app.include_router(auth.router, prefix="/api")
 app.include_router(user.router, prefix="/api")
 app.include_router(chat.router, prefix="/api")
@@ -75,6 +84,11 @@ app.include_router(wellness.router, prefix="/api", tags=["wellness"])
 app.include_router(influencer_submissions.router, prefix="/api")
 app.include_router(admin_influencer_submissions.router, prefix="/api")
 app.include_router(desire_list.router, prefix="/api")
+app.include_router(admin_level.router, prefix="/api")
+app.include_router(user_level.router, prefix="/api")
+app.include_router(card.router, prefix="/api")
+app.include_router(support_ticket.router, prefix="/api")
+app.include_router(influencer_analytics.router, prefix="/api")
 
 @app.exception_handler(StarletteHTTPException)
 async def http_exception_handler(request: Request, exc: StarletteHTTPException):

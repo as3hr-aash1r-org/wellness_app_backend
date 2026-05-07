@@ -144,13 +144,16 @@ def get_tip_of_the_day(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Get the current tip of the day for a specific type (skips facts already in user's library)"""
+    """
+    Get the current tip of the day for a specific type.
+    Returns empty if user has already read a tip today (strictly 1 per day).
+    """
     tip = fact_crud.get_tip_of_the_day(db=db, fact_type=fact_type, user_id=current_user.id)
     
     if not tip:
-        raise HTTPException(
-            status_code=404, 
-            detail=f"No new tip of the day found for {fact_type.value}. You've read all available facts!"
+        return success_response(
+            data=None,
+            message=f"Your viewed tips are already in your Library"
         )
     
     return success_response(
