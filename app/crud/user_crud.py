@@ -176,7 +176,23 @@ class CRUDUser:
                     room.updated_at = datetime.utcnow()
                 print(f"Deactivated {len(customer_rooms)} chat rooms for user {user.id} (became expert)")
         
-        # Case 3: User/Official/Influencer ↔ User/Official/Influencer or Admin changes
+        # Case 3: User → Official/Influencer (deactivate old chats, start fresh)
+        elif old_role == UserRole.user and new_role in [UserRole.official, UserRole.influencer]:
+            # Find all active chat rooms where this user is the customer
+            customer_rooms_query = select(ChatRoom).where(
+                ChatRoom.user_id == user.id,
+                ChatRoom.is_active == True
+            )
+            customer_rooms = list(db.execute(customer_rooms_query).scalars().all())
+            
+            if customer_rooms:
+                # Soft delete (deactivate) all their customer chat rooms
+                for room in customer_rooms:
+                    room.is_active = False
+                    room.updated_at = datetime.utcnow()
+                print(f"Deactivated {len(customer_rooms)} chat rooms for user {user.id} (user → {new_role.value})")
+        
+        # Case 4: Official/Influencer ↔ Official/Influencer or Admin changes
         # No action needed - chat rooms remain as-is
         
     def update_user(self, db: Session, *, user_id: int, obj_in):
@@ -256,6 +272,18 @@ class CRUDUser:
             from app.services.level_service import LevelService
             level_service = LevelService(db)
             level_service.upgrade_to_dxn_new(user.id)
+            
+            # Update role to official
+            old_role = user.role
+            user.role = UserRole.official
+            
+            # Generate d_id if doesn't have one
+            if not user.d_id:
+                from app.utils.id_generator import UserIDGenerator
+                user.d_id = UserIDGenerator.generate_d_id(db)
+            
+            # Handle chat room implications (deactivate old user chats)
+            self._handle_role_change_chat_rooms(db, user, old_role, UserRole.official)
                 
         db.commit()
         db.refresh(user)
