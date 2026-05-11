@@ -75,6 +75,7 @@ def get_all_feeds(
     # Track education viewed for level progression (feed = education in this app)
     level_service = LevelService(db)
     level_service.on_education_viewed(current_user.id)
+    db.commit()  # Commit condition tracking BEFORE fetching items
     
     offset = (current_page - 1) * limit
 
@@ -84,8 +85,6 @@ def get_all_feeds(
         items = feed_crud.get_all(db, type=type, category_id=category_id, limit=limit, offset=offset)
 
     total_pages = math.ceil(feed_crud.count_all(db, category_id=category_id) / limit)
-    
-    db.commit()  # Commit condition tracking
     
     return success_response(items, "Feed items fetched successfully", total_pages=total_pages)
 

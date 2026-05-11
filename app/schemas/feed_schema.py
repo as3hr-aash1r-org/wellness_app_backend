@@ -27,6 +27,7 @@ class FeedCreate(FeedBase):
 class FeedOut(FeedBase):
     id: int
     created_at: datetime
+    category: Optional['FeedCategoryOut'] = None
 
     class Config:
         from_attributes = True

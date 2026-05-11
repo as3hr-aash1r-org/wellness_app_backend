@@ -14,14 +14,6 @@ class FeedCRUD:
     def get_all(self, db: Session, type: Optional[str] = None, category_id: Optional[int] = None, limit: int = 50, offset: int = 0):
         query = db.query(FeedItem).options(joinedload(FeedItem.category))
         
-        # Filter out invalid items (NULL required fields) - production data cleanup
-        query = query.filter(
-            FeedItem.title.isnot(None),
-            FeedItem.type.isnot(None),
-            FeedItem.id.isnot(None),
-            FeedItem.created_at.isnot(None)
-        )
-        
         if type:
             query = query.filter(FeedItem.type == type)
         if category_id:
@@ -31,16 +23,12 @@ class FeedCRUD:
 
     def get_featured(self, db: Session, limit: int = 10):
         return db.query(FeedItem).options(joinedload(FeedItem.category)).filter(
-            FeedItem.is_featured == True,
-            FeedItem.title.isnot(None),
-            FeedItem.type.isnot(None)
+            FeedItem.is_featured == True
         ).order_by(FeedItem.created_at.desc()).limit(limit).all()
 
     def get_by_category(self, db: Session, category_id: int, limit: int = 50, offset: int = 0):
         return db.query(FeedItem).options(joinedload(FeedItem.category)).filter(
-            FeedItem.category_id == category_id,
-            FeedItem.title.isnot(None),
-            FeedItem.type.isnot(None)
+            FeedItem.category_id == category_id
         ).order_by(FeedItem.created_at.desc()).offset(offset).limit(limit).all()
 
     def search(self, db: Session, query: str, category_id: Optional[int] = None, limit: int = 20, offset: int = 0):
@@ -54,11 +42,7 @@ class FeedCRUD:
             FeedItem.tags.ilike(f"%{query}%")
         )
         
-        search_query = search_query.filter(
-            search_filter,
-            FeedItem.title.isnot(None),
-            FeedItem.type.isnot(None)
-        )
+        search_query = search_query.filter(search_filter)
         
         if category_id:
             search_query = search_query.filter(FeedItem.category_id == category_id)
