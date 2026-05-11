@@ -101,8 +101,8 @@ class CRUDCard:
         return result.scalar_one_or_none()
     
     def get_by_type_id(self, db: Session, *, card_type_id: int) -> List[Card]:
-        """Get all cards by card type ID"""
-        query = select(Card).where(Card.card_type_id == card_type_id).order_by(Card.created_at.desc())
+        """Get all cards by card type ID (oldest first for swiper)"""
+        query = select(Card).where(Card.card_type_id == card_type_id).order_by(Card.created_at.asc())
         result = db.execute(query)
         return list(result.scalars().all())
     
@@ -114,8 +114,8 @@ class CRUDCard:
         return self.get_by_type_id(db, card_type_id=card_type.id)
     
     def get_all(self, db: Session, skip: int = 0, limit: int = 100) -> List[Card]:
-        """Get all cards"""
-        query = select(Card).order_by(Card.created_at.desc()).offset(skip).limit(limit)
+        """Get all cards (oldest first for swiper)"""
+        query = select(Card).order_by(Card.created_at.asc()).offset(skip).limit(limit)
         result = db.execute(query)
         return list(result.scalars().all())
     
