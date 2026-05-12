@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import Optional
 from app.database.session import get_db
-from app.dependencies.auth_dependency import get_current_user
+from app.dependencies.auth_dependency import get_current_user, get_current_user_optional
 from app.models.user import User
 from app.schemas.feed_schema import FeedCreate, FeedOut, FeedCategoryCreate, FeedCategoryOut
 from app.schemas.api_response import success_response, APIResponse
@@ -65,17 +65,19 @@ def create_feed(feed: FeedCreate, db: Session = Depends(get_db)):
 @router.get("/", response_model=APIResponse[list[FeedOut]])
 def get_all_feeds(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: Optional[User] = Depends(get_current_user_optional),
     type: Optional[str] = Query(None, description="Filter by type"),
     category_id: Optional[int] = Query(None, description="Filter by category ID"),
     search: Optional[str] = None,
     limit: int = Query(25, ge=1, le=25, description="Number of items to return"),
     current_page: int = Query(1, ge=1, description="Current page number"),
 ):
-    # Track education viewed for level progression (feed = education in this app)
-    level_service = LevelService(db)
-    level_service.on_education_viewed(current_user.id)
-    db.commit()  # Commit condition tracking BEFORE fetching items
+    """Get all feeds - Public endpoint (guest browsing allowed)"""
+    # Track education viewed for level progression (feed = education in this app) - only if authenticated
+    if current_user:
+        level_service = LevelService(db)
+        level_service.on_education_viewed(current_user.id)
+        db.commit()  # Commit condition tracking
     
     offset = (current_page - 1) * limit
 

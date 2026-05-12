@@ -5,7 +5,7 @@ from app.database.session import get_db
 from app.schemas.product_schema import ProductCreate, ProductOut, ProductUpdate
 from app.schemas.api_response import success_response, APIResponse
 from app.crud.product_crud import product_crud
-from app.dependencies.auth_dependency import check_user_permissions, get_current_user
+from app.dependencies.auth_dependency import check_user_permissions, get_current_user, get_current_user_optional
 from app.models.user import UserRole, User
 from app.core.decorators import standardize_response
 import math
@@ -47,13 +47,15 @@ def get_all_products(
     category_name: Optional[str] = Query(None, description="Filter by category name (deprecated, use category_id)"),
     search: Optional[str] = Query(None),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: Optional[User] = Depends(get_current_user_optional)
 ):
-    """Get products with filtering options"""
-    # Track that user viewed products (for level progression)
-    from app.services.level_service import LevelService
-    level_service = LevelService(db)
-    level_service.on_products_viewed(current_user.id)
+    """Get products with filtering options - Public endpoint (guest browsing allowed)"""
+    # Track that user viewed products (for level progression) - only if authenticated
+    if current_user:
+        from app.services.level_service import LevelService
+        level_service = LevelService(db)
+        level_service.on_products_viewed(current_user.id)
+        db.commit()  # Commit condition tracking
     
     try:
         offset = (current_page - 1) * limit
@@ -81,8 +83,6 @@ def get_all_products(
             if product.category:
                 product_out.category_name = product.category.name
             product_outs.append(product_out)
-        
-        db.commit()  # Commit condition tracking
         
         return success_response(
             data=product_outs,
