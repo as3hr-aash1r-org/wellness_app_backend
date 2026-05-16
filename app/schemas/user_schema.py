@@ -253,3 +253,9 @@ class ExpertUpdate(BaseModel):
     position: Optional[str] = None
     country: Optional[str] = None
     dxn_distributor_number: Optional[str] = None
+
+
+class SponsorInfo(BaseModel):
+    """Sponsor information response"""
+    distributor_code: Optional[str] = None
+    username: Optional[str] = None

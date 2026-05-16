@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from datetime import datetime
 from app.schemas.api_response import success_response, APIResponse
 import math
-from app.schemas.user_schema import UserCreate, UserRead, UserAll, FCMTokenUpdate, UserUpdate, UpdateProfilePictureRequest, ProfileUpdateRequest
+from app.schemas.user_schema import UserCreate, UserRead, UserAll, FCMTokenUpdate, UserUpdate, UpdateProfilePictureRequest, ProfileUpdateRequest, SponsorInfo
 router = APIRouter(prefix="/users")
 
 
@@ -171,4 +171,41 @@ def update_profile(
     return success_response(
         data=user_data,
         message="Profile updated successfully"
+    )
+
+
+
+@router.get("/me/sponsor-info", response_model=APIResponse[SponsorInfo])
+@standardize_response
+def get_sponsor_info(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get sponsor distributor code and name for current user"""
+    # Check if user has referrer and referrer is official
+    referrer = user_crud.get_referrer_for_user(db=db, user_id=current_user.id)
+    if referrer and referrer.role == UserRole.official:
+        return success_response(
+            data=SponsorInfo(
+                distributor_code=referrer.distributor_code,
+                username=referrer.username
+            ),
+            message="Sponsor info retrieved successfully"
+        )
+    
+    # No referrer or referrer not official - find first expert
+    expert = db.query(User).filter(User.role == UserRole.expert).first()
+    if expert:
+        return success_response(
+            data=SponsorInfo(
+                distributor_code=expert.distributor_code,
+                username=expert.username
+            ),
+            message="Sponsor info retrieved successfully"
+        )
+    
+    # No expert found
+    return success_response(
+        data=None,
+        message="No sponsor found"
     )
