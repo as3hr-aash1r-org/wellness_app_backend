@@ -10,14 +10,55 @@ import logging
 
 from app.database.session import SessionLocal
 from app.crud.fact_crud import fact_crud
+from app.models.user import User
+from app.services.firebase_service import firebase_notification_service
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
+def send_fact_notification_to_all_users(db):
+    """Send fact of the day notification to all users with FCM tokens"""
+    try:
+        # Get all users with FCM tokens
+        users = db.query(User).filter(User.fcm_token.isnot(None)).all()
+        
+        if not users:
+            logger.info("No users with FCM tokens found")
+            return
+        
+        title = "Fact of the Day"
+        body = "Check out today's health facts and boost your wellness knowledge!"
+        
+        success_count = 0
+        failed_count = 0
+        
+        for user in users:
+            try:
+                firebase_notification_service.send_notification(
+                    token=user.fcm_token,
+                    title=title,
+                    body=body,
+                    data={
+                        "type": "fact_of_the_day",
+                        "title": title,
+                        "body": body
+                    }
+                )
+                success_count += 1
+            except Exception as e:
+                logger.error(f"Failed to send notification to user {user.id}: {str(e)}")
+                failed_count += 1
+        
+        logger.info(f"📱 Sent fact notifications: {success_count} successful, {failed_count} failed")
+        
+    except Exception as e:
+        logger.error(f"Error sending fact notifications: {str(e)}")
+
+
 def advance_tod_pointers_job():
-    """Job to advance all TOD pointers"""
+    """Job to advance all TOD pointers and send notifications"""
     db = SessionLocal()
     try:
         logger.info("Starting TOD pointer advancement job...")
@@ -33,6 +74,9 @@ def advance_tod_pointers_job():
                 logger.info(f"⏭️  {fact_type}: {result['reason']}")
         
         logger.info("TOD pointer advancement job completed successfully")
+        
+        # Send notification to all users
+        send_fact_notification_to_all_users(db)
         
     except Exception as e:
         logger.error(f"❌ Error in TOD advancement job: {str(e)}")

@@ -106,9 +106,9 @@ class CRUDDesireList:
         return result.scalars().all()
 
     def get_desire_list_count(self, db: Session, *, user_id: int) -> int:
-        """Get total quantity sum of all items in desire list"""
+        """Get count of distinct products in desire list (not quantity sum)"""
         
-        query = select(func.sum(DesireListItem.quantity)).where(
+        query = select(func.count(DesireListItem.id)).where(
             DesireListItem.user_id == user_id
         )
         result = db.execute(query)
