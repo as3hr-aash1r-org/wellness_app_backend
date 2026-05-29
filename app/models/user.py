@@ -66,6 +66,7 @@ class User(Base):
     position: Mapped[str] = mapped_column(String, nullable=True)
     dxn_distributor_number: Mapped[str] = mapped_column(String, nullable=True)
     referral_code: Mapped[str] = mapped_column(String, nullable=True, unique=True)
+    auto_sponsor_code: Mapped[str] = mapped_column(String, nullable=True)
     
     # sponsor_code: Mapped[str] = mapped_column(String, nullable=True)
     # distributor_code: Mapped[str] = mapped_column(String, nullable=True)

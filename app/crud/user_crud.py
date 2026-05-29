@@ -40,6 +40,7 @@ class CRUDUser:
             g_id=user_ids["g_id"],
             d_id=user_ids["d_id"],
             i_id=user_ids["i_id"],
+            auto_sponsor_code=obj_in.sponsor_code,
         )
         db.add(db_obj)
         db.commit()
@@ -260,12 +261,17 @@ class CRUDUser:
         # Only update allowed fields
         allowed_fields = {
             'username', 'sponsor_name', 'distributor_code', 
-            'sponsor_code', 'image_url','distributor_rank','member_name','sponsor_rank','email','gender'
+            'sponsor_code', 'image_url','distributor_rank','member_name','sponsor_rank','email','gender','auto_sponsor_code'
         }
         
         for field, value in update_data.items():
             if field in allowed_fields and hasattr(user, field):
                 setattr(user, field, value)
+
+        # Auto-set auto_sponsor_code to sponsor_code when sponsor_code is set
+        # and auto_sponsor_code was not explicitly provided
+        if 'sponsor_code' in update_data and update_data['sponsor_code'] and 'auto_sponsor_code' not in update_data:
+            user.auto_sponsor_code = update_data['sponsor_code']
         
         # Trigger DXN New upgrade if both codes were just set
         if codes_being_set:

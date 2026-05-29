@@ -187,7 +187,7 @@ def get_sponsor_info(
     if referrer and referrer.role == UserRole.official:
         return success_response(
             data=SponsorInfo(
-                distributor_code=referrer.distributor_code,
+                distributor_code=referrer.auto_sponsor_code,
                 username=referrer.username
             ),
             message="Sponsor info retrieved successfully"
@@ -198,7 +198,7 @@ def get_sponsor_info(
     if expert:
         return success_response(
             data=SponsorInfo(
-                distributor_code=expert.distributor_code,
+                distributor_code=expert.auto_sponsor_code,
                 username=expert.username
             ),
             message="Sponsor info retrieved successfully"

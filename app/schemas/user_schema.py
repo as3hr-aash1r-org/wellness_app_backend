@@ -115,6 +115,7 @@ class UserRead(BaseModel):
     updated_at: Optional[datetime]
     image_url: Optional[str]
     referral_code: Optional[str]
+    auto_sponsor_code: Optional[str]
     distributor_rank: Optional[str]
     member_name: Optional[str]
     sponsor_rank: Optional[str]
@@ -124,6 +125,12 @@ class UserRead(BaseModel):
     
     class Config:
         from_attributes = True
+    
+    @model_validator(mode='after')
+    def set_auto_sponsor_code(self):
+        if self.auto_sponsor_code is None:
+            self.auto_sponsor_code = self.sponsor_code
+        return self
 class UpdateProfilePictureRequest(BaseModel):
     image_url: str
 class ProfileUpdateRequest(BaseModel):
@@ -140,6 +147,7 @@ class ProfileUpdateRequest(BaseModel):
     sponsor_rank: Optional[str] = None  # Sponsor rank
     email: Optional[str] = None  # Email
     gender: Optional[str] = None  # Gender
+    auto_sponsor_code: Optional[str] = None  # Auto sponsor code
     
     # Profile photo
     image_url: Optional[str] = None
