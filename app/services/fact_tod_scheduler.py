@@ -1,10 +1,9 @@
 """
 Fact TOD (Tip of the Day) Scheduler Service
-Advances TOD pointers daily at 11:59 PM PKT
+Advances TOD pointers daily at midnight UTC
 """
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
-from pytz import timezone
 from datetime import datetime
 import logging
 
@@ -87,19 +86,19 @@ def advance_tod_pointers_job():
 
 def start_scheduler():
     """Initialize and start the scheduler"""
-    scheduler = BackgroundScheduler(timezone=timezone('Asia/Karachi'))
+    scheduler = BackgroundScheduler(timezone='UTC')
     
-    # Schedule job to run daily at 11:59 PM PKT
+    # Schedule job to run daily at midnight UTC
     scheduler.add_job(
         advance_tod_pointers_job,
-        trigger=CronTrigger(hour=23, minute=59, timezone='Asia/Karachi'),
+        trigger=CronTrigger(hour=0, minute=0, timezone='UTC'),
         id='advance_tod_pointers',
         name='Advance Fact TOD Pointers',
         replace_existing=True
     )
     
     scheduler.start()
-    logger.info("📅 TOD Scheduler started - will run daily at 11:59 PM PKT")
+    logger.info("📅 TOD Scheduler started - will run daily at midnight UTC")
     
     return scheduler
 

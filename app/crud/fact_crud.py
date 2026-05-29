@@ -59,30 +59,18 @@ class CRUDFact:
     def get_tip_of_the_day(self, db: Session, *, fact_type: FactType, user_id: int) -> Optional[Fact]:
         """
         Get the current tip of the day for a specific type.
-        Returns None if user has already saved ANY fact of this type TODAY (Pakistan timezone).
+        Returns None if user has already saved ANY fact of this type TODAY (UTC).
         Strictly 1 tip per day per type.
         """
-        # Get today's date in Pakistan timezone (consistent with cron job)
-        from pytz import timezone
-        pkt = timezone('Asia/Karachi')
-        now_pkt = datetime.now(pkt)
-        today_pkt = now_pkt.date()
+        # Get today's date in UTC
+        today_utc = datetime.utcnow().date()
         
-        # Calculate the start and end of today in Pakistan timezone, then convert to UTC
-        # This ensures we're comparing apples to apples (UTC saved_at vs UTC range)
-        start_of_today_pkt = pkt.localize(datetime.combine(today_pkt, datetime.min.time()))
-        end_of_today_pkt = pkt.localize(datetime.combine(today_pkt, datetime.max.time()))
-        
-        start_of_today_utc = start_of_today_pkt.astimezone(timezone('UTC')).replace(tzinfo=None)
-        end_of_today_utc = end_of_today_pkt.astimezone(timezone('UTC')).replace(tzinfo=None)
-        
-        # Query: Check if user saved any fact of this type today (in Pakistan timezone)
+        # Check if user saved any fact of this type today (UTC date comparison)
         saved_today_query = select(UserFactLibrary).join(Fact).where(
             and_(
                 UserFactLibrary.user_id == user_id,
                 Fact.type == fact_type,
-                UserFactLibrary.saved_at >= start_of_today_utc,
-                UserFactLibrary.saved_at <= end_of_today_utc
+                cast(UserFactLibrary.saved_at, Date) == today_utc
             )
         )
         result = db.execute(saved_today_query)
@@ -208,9 +196,7 @@ class CRUDFact:
 
     def advance_tod_pointers(self, db: Session) -> dict:
         """Advance all TOD pointers (called by cron job)"""
-        from pytz import timezone
-        pkt = timezone('Asia/Karachi')
-        today_pkt = datetime.now(pkt).date()
+        today_utc = datetime.utcnow().date()
         
         results = {}
         
@@ -223,10 +209,10 @@ class CRUDFact:
                 results[fact_type.value] = {"status": "skipped", "reason": "No pointer found"}
                 continue
             
-            # Idempotent guard: check if already advanced today
+            # Idempotent guard: check if already advanced today (UTC)
             if pointer.last_updated_at:
-                last_update_date = pointer.last_updated_at.astimezone(pkt).date() if pointer.last_updated_at.tzinfo else pointer.last_updated_at.date()
-                if last_update_date >= today_pkt:
+                last_update_date = pointer.last_updated_at.date()
+                if last_update_date >= today_utc:
                     results[fact_type.value] = {"status": "skipped", "reason": "Already advanced today"}
                     continue
             
@@ -317,7 +303,7 @@ class CRUDFact:
         if not fact:
             raise HTTPException(status_code=404, detail="Fact not found")
         
-        # Save to library (idempotent)
+        # Save to library (update timestamp even if already exists)
         query = select(UserFactLibrary).where(
             and_(
                 UserFactLibrary.user_id == user_id,
@@ -328,17 +314,20 @@ class CRUDFact:
         existing = result.scalar_one_or_none()
         
         if not existing:
+            # Create new entry
             library_entry = UserFactLibrary(
                 user_id=user_id,
                 fact_id=fact_id,
                 saved_at=datetime.utcnow()
             )
             db.add(library_entry)
-            db.commit()
-            db.refresh(library_entry)
         else:
+            # Update existing entry's timestamp to reflect current view
+            existing.saved_at = datetime.utcnow()
             library_entry = existing
         
+        db.commit()
+        db.refresh(library_entry)
         return library_entry
 
     def get_user_library(

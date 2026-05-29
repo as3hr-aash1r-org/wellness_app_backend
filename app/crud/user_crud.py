@@ -40,7 +40,7 @@ class CRUDUser:
             g_id=user_ids["g_id"],
             d_id=user_ids["d_id"],
             i_id=user_ids["i_id"],
-            auto_sponsor_code=obj_in.sponsor_code,
+            auto_sponsor_code=obj_in.distributor_code,
         )
         db.add(db_obj)
         db.commit()
@@ -270,8 +270,8 @@ class CRUDUser:
 
         # Auto-set auto_sponsor_code to sponsor_code when sponsor_code is set
         # and auto_sponsor_code was not explicitly provided
-        if 'sponsor_code' in update_data and update_data['sponsor_code'] and 'auto_sponsor_code' not in update_data:
-            user.auto_sponsor_code = update_data['sponsor_code']
+        if 'distributor_code' in update_data and update_data['distributor_code'] and 'auto_sponsor_code' not in update_data:
+            user.auto_sponsor_code = update_data['distributor_code']
         
         # Trigger DXN New upgrade if both codes were just set
         if codes_being_set:

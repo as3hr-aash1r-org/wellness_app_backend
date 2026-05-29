@@ -146,7 +146,7 @@ def get_tip_of_the_day(
 ):
     """
     Get the current tip of the day for a specific type.
-    Returns empty if user has already read a tip today (strictly 1 per day).
+    Returns empty if user has already read a tip today (UTC, strictly 1 per day).
     """
     tip = fact_crud.get_tip_of_the_day(db=db, fact_type=fact_type, user_id=current_user.id)
     
