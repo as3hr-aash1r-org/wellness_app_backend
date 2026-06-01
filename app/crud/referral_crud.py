@@ -179,6 +179,7 @@ class CRUDReferral:
         for user, joined_at in result:
             invitees.append({
                 "user_id": user.id,
+                "g_id": user.g_id,
                 "username": user.username,
                 "email": user.email,
                 "phone_number": user.phone_number,

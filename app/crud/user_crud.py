@@ -30,7 +30,7 @@ class CRUDUser:
             username = obj_in.username,
             phone_number=obj_in.phone_number,
             role=obj_in.role,
-            app_level=AppLevel.new_joiner,  # Set default level
+            app_level=AppLevel.dxn_new if obj_in.role in [UserRole.official, UserRole.expert, UserRole.influencer] else AppLevel.new_joiner,
             sponsor_name=obj_in.sponsor_name,
             sponsor_code=obj_in.sponsor_code,
             distributor_code=obj_in.distributor_code,
@@ -220,6 +220,15 @@ class CRUDUser:
         
         # Generate additional IDs if role changed
         if role_changed:
+            # Update app_level based on new role
+            from app.models.user import AppLevel
+            if new_role in [UserRole.official, UserRole.expert, UserRole.influencer]:
+                user.app_level = AppLevel.dxn_new
+                user.level_upgraded_at = datetime.utcnow()
+            elif new_role == UserRole.user:
+                user.app_level = AppLevel.new_joiner
+                user.level_upgraded_at = None
+            
             # Generate d_id if changed to official and doesn't have one
             if new_role == UserRole.official and not user.d_id:
                 from app.utils.id_generator import UserIDGenerator

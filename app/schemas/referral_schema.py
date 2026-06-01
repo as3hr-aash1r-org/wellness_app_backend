@@ -5,6 +5,7 @@ from datetime import datetime
 
 class InviteeDetails(BaseModel):
     user_id: int
+    g_id: Optional[str]
     username: Optional[str]
     email: Optional[str]
     phone_number: Optional[str]
